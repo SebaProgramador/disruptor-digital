@@ -128,7 +128,7 @@ export default function Politicas() {
             onMouseLeave={(e) => (e.target.style.transform = "scale(1)")}
           >
             <FaCheckCircle />
-            Aceptar y Reservar
+            Aceptar y reservar
           </button>
         </div>
       </div>
