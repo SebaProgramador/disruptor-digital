@@ -47,7 +47,7 @@ export default function Politicas() {
             textShadow: "0 0 8px #b88c50aa",
           }}
         >
-          📜 Términos y Condiciones
+          📜 Términos y Condiciones (actualizado)
         </h1>
 
         <ul
