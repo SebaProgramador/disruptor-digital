@@ -48,7 +48,7 @@ export default function Politicas() {
             textShadow: "0 0 8px #b88c50aa",
           }}
         >
-          📜 Términos y Condiciones (actualizado)
+          📜 Términos y Condiciones 📜
         </h1>
 
         <ul
@@ -99,7 +99,7 @@ export default function Politicas() {
             </p>
             <ul style={{ paddingLeft: "20px", marginTop: "5px" }}>
               <li>- El profesional se compromete a realizar un trabajo de manera responsable y ética.</li>
-              <li>- El profesional se compromete a mantener confidencialidad en la información que el cliente le proporciona ya sea acerca del proyecto realizado o lo conversado en las reuniones.</li>
+              <li>- El profesional se compromete a mantener confidencialidad en la información que el cliente le proporciona.</li>
             </ul>
           </li>
         </ul>

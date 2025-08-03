@@ -1,6 +1,6 @@
 // src/pages/ListaReservas.js
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/datepicker-dark.css";
 import {
@@ -26,7 +26,7 @@ const estilos = {
     width: "100%",
     borderCollapse: "collapse",
     marginTop: 30,
-    minWidth: 700, // 👈 importante para que en móvil tenga scroll
+    minWidth: 750,
   },
   th: {
     backgroundColor: "#1a1a1a",
@@ -34,6 +34,7 @@ const estilos = {
     padding: 12,
     border: "1px solid #a8854f",
     fontSize: "0.9rem",
+    textAlign: "center",
   },
   td: {
     padding: 12,
@@ -62,6 +63,8 @@ const estilos = {
     borderRadius: 6,
     cursor: "pointer",
     boxShadow: "0 0 8px rgba(255, 0, 0, 0.5)",
+    fontWeight: "bold",
+    fontSize: "0.85rem",
   },
   filtros: {
     display: "flex",
@@ -80,6 +83,13 @@ const estilos = {
     boxShadow: "0 0 8px #a8854f55",
     minWidth: 180,
   },
+  contador: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: "1.1rem",
+    color: "#ffde9f",
+    textShadow: "0 0 6px #b88c50aa",
+  },
 };
 
 export default function ListaReservas() {
@@ -87,25 +97,23 @@ export default function ListaReservas() {
   const [filtroNombre, setFiltroNombre] = useState("");
   const [filtroDia, setFiltroDia] = useState("");
 
-  const obtenerReservas = async () => {
-    const snapshot = await getDocs(collection(db, "reservas"));
-    const datos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    setReservas(datos);
-  };
-
   useEffect(() => {
-    obtenerReservas();
+    const unsub = onSnapshot(collection(db, "reservas"), (snapshot) => {
+      const datos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setReservas(datos);
+    });
+
+    return () => unsub(); // se desconecta al desmontar
   }, []);
 
   const eliminarReserva = async (id) => {
     const confirmar = window.confirm("¿Seguro que deseas eliminar esta reserva?");
     if (!confirmar) return;
     await deleteDoc(doc(db, "reservas", id));
-    obtenerReservas();
   };
 
   const reservasFiltradas = reservas.filter((r) => {
-    const coincideNombre = r.nombre.toLowerCase().includes(filtroNombre.toLowerCase());
+    const coincideNombre = r.nombre?.toLowerCase().includes(filtroNombre.toLowerCase());
     const coincideDia = filtroDia ? r.dia === filtroDia : true;
     return coincideNombre && coincideDia;
   });
@@ -131,6 +139,10 @@ export default function ListaReservas() {
           onChange={(e) => setFiltroDia(e.target.value)}
         />
       </div>
+
+      <p style={estilos.contador}>
+        Total: {reservasFiltradas.length} reserva{reservasFiltradas.length !== 1 && "s"} encontradas
+      </p>
 
       <div style={estilos.tablaResponsive}>
         <table style={estilos.tabla}>

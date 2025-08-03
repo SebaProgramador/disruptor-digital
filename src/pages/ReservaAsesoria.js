@@ -189,11 +189,22 @@ export default function ReservaAsesoria() {
     <div style={estilos.fondo}>
       <div style={estilos.contenedor}>
         <div style={{ textAlign: "center", marginBottom: "25px" }}>
-          <img
-            src="/logo.jpg"
-            alt="Logo"
-            style={estilos.logo}
-          />
+          {/* LOGO MEJORADO */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+            <img
+              src="/logo.jpg"
+              alt="Logo Disruptor Digital"
+              style={{
+                width: "100px",
+                height: "100px",
+                objectFit: "cover",
+                borderRadius: "50%",
+                boxShadow: "0 0 15px rgba(212, 175, 80, 0.6)",
+                border: "2px solid #d4af50"
+              }}
+            />
+          </div>
+
           <h2 style={estilos.titulo}>
             <FaCalendarAlt style={{ color: "#d4af50" }} /> Reserva tu Asesoría
           </h2>

@@ -8,6 +8,8 @@ import AdminLogin from "./pages/AdminLogin";
 import ReservaAsesoria from "./pages/ReservaAsesoria";
 import GerentePanel from "./pages/GerentePanel";
 import ListaReservas from "./pages/ListaReservas";
+import AdminPanel from "./pages/AdminPanel";
+import LoginAdmin from './pages/AdminLogin';
 
 function App() {
   return (
@@ -19,6 +21,9 @@ function App() {
         <Route path="/reservar" element={<ReservaAsesoria />} />
         <Route path="/gerente" element={<GerentePanel />} />
         <Route path="/lista-reservas" element={<ListaReservas />} />
+        <Route path="/admin-panel" element={<AdminPanel />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin" element={<LoginAdmin />} />
       </Routes>
     </Router>
   );

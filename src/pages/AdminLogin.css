@@ -1,0 +1,99 @@
+/* src/pages/AdminLogin.css */
+.fondo-login {
+  min-height: 100vh;
+  background-image: url('/fondo-login.gif');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Segoe UI', sans-serif;
+  padding: 20px;
+}
+
+.caja-login {
+  background-color: rgba(30, 30, 30, 0.95);
+  padding: 40px;
+  border-radius: 15px;
+  border: 2px solid #a8854f;
+  box-shadow: 0 0 25px #a8854f80;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.logo-login {
+  width: 100%;
+  max-width: 200px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 14px #a8854f88;
+}
+
+.titulo-login {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  color: #d4af7f;
+}
+
+.input-login {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #a8854f;
+  background-color: #2b2b2b;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.boton-login {
+  width: 100%;
+  padding: 12px;
+  background-color: #a8854f;
+  border: none;
+  border-radius: 8px;
+  color: #121212;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 0 10px #a8854f88;
+  margin-top: 5px;
+}
+
+.boton-secundario {
+  width: 100%;
+  padding: 12px;
+  background-color: #444;
+  border: none;
+  border-radius: 8px;
+  color: #d4af7f;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 0 8px #666;
+  margin-top: 15px;
+}
+
+.error-login {
+  color: #ff6666;
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.mostrar-clave {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  color: #d4af7f;
+  font-size: 0.9rem;
+  user-select: none;
+  cursor: pointer;
+}
+
+.oculto {
+  position: absolute;
+  left: -9999px;
+}
