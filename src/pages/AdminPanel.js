@@ -1,24 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
-import "./adminPanelEstilo.css";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
-import {
-  collection,
-  onSnapshot,
-  deleteDoc,
-  addDoc,
-  doc,
-} from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, addDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "../styles/adminPanelEstilo.css";
 
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [reservas, setReservas] = useState([]);
   const [reservasConfirmadas, setReservasConfirmadas] = useState([]);
   const [proyectos, setProyectos] = useState([]);
-
   const [formularioProyecto, setFormularioProyecto] = useState({
     cliente: "",
     fechaInicio: "",
@@ -29,7 +24,6 @@ export default function AdminPanel() {
     archivoNombre: "",
     linkMeet: "",
   });
-
   const [editIndex, setEditIndex] = useState(null);
   const posiblesResponsables = ["Nicolás", "Eliana", "Sebastián"];
 
@@ -38,19 +32,11 @@ export default function AdminPanel() {
     if (logged !== "true") navigate("/admin-login");
 
     const unsubPendientes = onSnapshot(collection(db, "reservas"), (snapshot) => {
-      const datos = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setReservas(datos);
+      setReservas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
 
     const unsubConfirmadas = onSnapshot(collection(db, "reservasConfirmadas"), (snapshot) => {
-      const datos = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setReservasConfirmadas(datos);
+      setReservasConfirmadas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
 
     return () => {
@@ -63,18 +49,20 @@ export default function AdminPanel() {
     try {
       await addDoc(collection(db, "reservasConfirmadas"), reserva);
       await deleteDoc(doc(db, "reservas", reserva.id));
+      toast.success("✅ Reserva confirmada correctamente");
     } catch (error) {
-      console.error("Error al confirmar reserva:", error);
+      console.error(error);
+      toast.error("❌ Error al confirmar la reserva");
     }
   };
 
   const eliminarReserva = async (id) => {
-    const confirmar = window.confirm("¿Deseas eliminar esta reserva?");
-    if (!confirmar) return;
+    if (!window.confirm("¿Deseas eliminar esta reserva?")) return;
     try {
       await deleteDoc(doc(db, "reservas", id));
+      toast.info("🗑️ Reserva eliminada");
     } catch (error) {
-      console.error("Error al eliminar reserva:", error);
+      toast.error("❌ Error al eliminar");
     }
   };
 
@@ -83,10 +71,9 @@ export default function AdminPanel() {
   };
 
   const toggleResponsable = (nombre) => {
-    let nuevos = [...formularioProyecto.responsables];
-    nuevos = nuevos.includes(nombre)
-      ? nuevos.filter((r) => r !== nombre)
-      : [...nuevos, nombre];
+    const nuevos = formularioProyecto.responsables.includes(nombre)
+      ? formularioProyecto.responsables.filter((r) => r !== nombre)
+      : [...formularioProyecto.responsables, nombre];
     setFormularioProyecto({ ...formularioProyecto, responsables: nuevos });
   };
 
@@ -109,19 +96,23 @@ export default function AdminPanel() {
   const guardarProyecto = (e) => {
     e.preventDefault();
     const f = formularioProyecto;
-    if (!f.cliente.trim() || !f.fechaInicio || !f.fechaFin || f.responsables.length === 0 || (!f.archivos.trim() && !f.archivoData)) {
-      alert("Por favor completa todos los campos obligatorios.");
+    if (!f.cliente || !f.fechaInicio || !f.fechaFin || f.responsables.length === 0 || (!f.archivos && !f.archivoData)) {
+      toast.warn("⚠️ Completa todos los campos obligatorios");
       return;
     }
-    const nuevo = { ...formularioProyecto };
+
+    const nuevo = { ...f };
     if (editIndex !== null) {
       const actualizados = [...proyectos];
       actualizados[editIndex] = nuevo;
       setProyectos(actualizados);
       setEditIndex(null);
+      toast.success("💾 Proyecto actualizado");
     } else {
       setProyectos([...proyectos, nuevo]);
+      toast.success("📤 Proyecto subido");
     }
+
     setFormularioProyecto({
       cliente: "",
       fechaInicio: "",
@@ -134,13 +125,33 @@ export default function AdminPanel() {
     });
   };
 
+  const cargarProyectoParaEditar = (proyecto, index) => {
+    setFormularioProyecto(proyecto);
+    setEditIndex(index);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const eliminarProyecto = (index) => {
+    if (!window.confirm("¿Deseas eliminar este proyecto?")) return;
+    const nuevos = [...proyectos];
+    nuevos.splice(index, 1);
+    setProyectos(nuevos);
+    toast.info("🗑️ Proyecto eliminado");
+  };
+
   return (
     <div className="fondo-admin">
       <h2 className="titulo">🛠️ Panel de Administración</h2>
 
-      {reservas.length === 0 ? (
-        <p>No hay reservas pendientes.</p>
-      ) : (
+      <div className="barra-superior">
+        <button className="btn-volver" onClick={() => navigate("/")}>🏠 Volver al Inicio</button>
+        <button className="boton-ver-proyectos" onClick={() => navigate("/lista-proyectos")}>
+          📂 Ver Proyectos Subidos
+        </button>
+      </div>
+
+      {/* RESERVAS PENDIENTES */}
+      {reservas.length > 0 && (
         <>
           <h3 className="subtitulo">📋 Reservas Pendientes</h3>
           {reservas.map((reserva) => (
@@ -152,7 +163,6 @@ export default function AdminPanel() {
               <p><strong>📂 Rubro:</strong> {reserva.rubro}</p>
               <p><strong>🗓️ Día:</strong> {reserva.dia}</p>
               <p><strong>⏰ Hora:</strong> {reserva.horario}</p>
-
               <div className="barra-superior">
                 <button className="btn-accion" onClick={() => confirmarReserva(reserva)}>✅ Confirmar</button>
                 <button className="btn-eliminar" onClick={() => eliminarReserva(reserva.id)}>🗑️ Eliminar</button>
@@ -162,6 +172,7 @@ export default function AdminPanel() {
         </>
       )}
 
+      {/* RESERVAS CONFIRMADAS */}
       {reservasConfirmadas.length > 0 && (
         <>
           <h3 className="subtitulo">✅ Reservas Confirmadas</h3>
@@ -179,10 +190,11 @@ export default function AdminPanel() {
         </>
       )}
 
+      {/* SUBIR NUEVO PROYECTO */}
       <h3 className="subtitulo">📁 Subir Proyecto de Cliente</h3>
       <form onSubmit={guardarProyecto} className="tarjeta">
         <label className="label">Nombre del cliente</label>
-        <input type="text" name="cliente" className="input" value={formularioProyecto.cliente} onChange={manejarCambioProyecto} placeholder="Nombre del cliente" />
+        <input type="text" name="cliente" className="input" value={formularioProyecto.cliente} onChange={manejarCambioProyecto} />
 
         <label className="label">Desde</label>
         <DatePicker
@@ -191,7 +203,6 @@ export default function AdminPanel() {
           dateFormat="yyyy-MM-dd"
           locale={es}
           className="calendario"
-          placeholderText="Selecciona una fecha"
         />
 
         <label className="label">Hasta</label>
@@ -201,10 +212,9 @@ export default function AdminPanel() {
           dateFormat="yyyy-MM-dd"
           locale={es}
           className="calendario"
-          placeholderText="Selecciona una fecha"
         />
 
-        <label className="label">Personas a cargo del proyecto (selecciona uno o más)</label>
+        <label className="label">Responsables</label>
         <div className="contenedor-responsables">
           {posiblesResponsables.map((nombre) => (
             <button
@@ -222,47 +232,55 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        <label className="label">Link de archivo (Drive, PDF, etc.)</label>
-        <input type="text" name="archivos" className="input" value={formularioProyecto.archivos} onChange={manejarCambioProyecto} placeholder="Pega aquí un link si tienes" />
+        <label className="label">Link de archivo (opcional)</label>
+        <input type="text" name="archivos" className="input" value={formularioProyecto.archivos} onChange={manejarCambioProyecto} />
 
         <label className="label">O subir archivo:</label>
         <input type="file" onChange={manejarArchivo} className="input" />
-        {formularioProyecto.archivoNombre && (
-          <p style={{ marginTop: 6, color: "#aaa" }}>
-            Archivo cargado: <strong>{formularioProyecto.archivoNombre}</strong>
-          </p>
-        )}
+        {formularioProyecto.archivoNombre && <p>📎 {formularioProyecto.archivoNombre}</p>}
 
         <label className="label">Link de Meet (opcional)</label>
-        <input type="text" name="linkMeet" className="input" value={formularioProyecto.linkMeet} onChange={manejarCambioProyecto} placeholder="Link de Meet" />
+        <input type="text" name="linkMeet" className="input" value={formularioProyecto.linkMeet} onChange={manejarCambioProyecto} />
 
         <div className="barra-superior">
-          <button type="submit" className="btn-accion">
-            {editIndex !== null ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}
-          </button>
+          <button type="submit" className="btn-accion">{editIndex !== null ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}</button>
           {editIndex !== null && (
-            <button
-              type="button"
-              className="btn-cancelar"
-              onClick={() => {
-                setFormularioProyecto({
-                  cliente: "",
-                  fechaInicio: "",
-                  fechaFin: "",
-                  responsables: [],
-                  archivos: "",
-                  archivoData: "",
-                  archivoNombre: "",
-                  linkMeet: "",
-                });
-                setEditIndex(null);
-              }}
-            >
+            <button type="button" className="btn-cancelar" onClick={() => {
+              setFormularioProyecto({
+                cliente: "", fechaInicio: "", fechaFin: "", responsables: [],
+                archivos: "", archivoData: "", archivoNombre: "", linkMeet: "",
+              });
+              setEditIndex(null);
+            }}>
               ❌ Cancelar edición
             </button>
           )}
         </div>
       </form>
+
+      {/* PROYECTOS ACTUALES */}
+      {proyectos.length > 0 && (
+        <>
+          <h3 className="subtitulo">📂 Proyectos Actuales</h3>
+          {proyectos.map((proy, i) => (
+            <div key={i} className="tarjeta">
+              <p><strong>👤 Cliente:</strong> {proy.cliente}</p>
+              <p><strong>📅 Desde:</strong> {new Date(proy.fechaInicio).toLocaleDateString()}</p>
+              <p><strong>📅 Hasta:</strong> {new Date(proy.fechaFin).toLocaleDateString()}</p>
+              <p><strong>👥 Responsables:</strong> {proy.responsables.join(", ")}</p>
+              {proy.archivos && <p><strong>📎 Link:</strong> <a href={proy.archivos} target="_blank" rel="noreferrer">Ver</a></p>}
+              {proy.archivoNombre && <p><strong>📄 Archivo:</strong> {proy.archivoNombre}</p>}
+              {proy.linkMeet && <p><strong>🎥 Meet:</strong> <a href={proy.linkMeet} target="_blank" rel="noreferrer">{proy.linkMeet}</a></p>}
+              <div className="barra-superior">
+                <button className="btn-accion" onClick={() => cargarProyectoParaEditar(proy, i)}>✏️ Editar</button>
+                <button className="btn-eliminar" onClick={() => eliminarProyecto(i)}>🗑️ Eliminar</button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      <ToastContainer position="bottom-center" autoClose={2500} hideProgressBar />
     </div>
   );
 }

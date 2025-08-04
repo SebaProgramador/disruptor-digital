@@ -10,6 +10,8 @@ import GerentePanel from "./pages/GerentePanel";
 import ListaReservas from "./pages/ListaReservas";
 import AdminPanel from "./pages/AdminPanel";
 import LoginAdmin from './pages/AdminLogin';
+import ListaProyectos from "./pages/ListaProyectos";
+
 
 function App() {
   return (
@@ -24,6 +26,7 @@ function App() {
         <Route path="/admin-panel" element={<AdminPanel />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin" element={<LoginAdmin />} />
+        <Route path="/lista-proyectos" element={<ListaProyectos />} />
       </Routes>
     </Router>
   );

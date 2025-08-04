@@ -2,7 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Configuración de tu proyecto Firebase
+// Configuración de tu nuevo proyecto Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDYqv1V9Wvph-L6n9AZ5ggoMKZ_Ly92k74",
   authDomain: "disruptor-digital-368e6.firebaseapp.com",
