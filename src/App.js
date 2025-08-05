@@ -6,27 +6,45 @@ import Inicio from "./pages/Inicio";
 import Politicas from "./pages/Politicas";
 import AdminLogin from "./pages/AdminLogin";
 import ReservaAsesoria from "./pages/ReservaAsesoria";
-import GerentePanel from "./pages/GerentePanel";
 import ListaReservas from "./pages/ListaReservas";
 import AdminPanel from "./pages/AdminPanel";
-import LoginAdmin from './pages/AdminLogin';
 import ListaProyectos from "./pages/ListaProyectos";
-
+import HistorialReservas from "./pages/HistorialReservas";
+import GerentePanel from "./pages/GerentePanel";
+import GerenteLogin from "./pages/GerenteLogin";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Inicio />} />
-        <Route path="/Politicas" element={<Politicas />} />
+        <Route path="/politicas" element={<Politicas />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/reservar" element={<ReservaAsesoria />} />
-        <Route path="/gerente" element={<GerentePanel />} />
         <Route path="/lista-reservas" element={<ListaReservas />} />
-        <Route path="/admin-panel" element={<AdminPanel />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin" element={<LoginAdmin />} />
+        <Route
+          path="/admin-panel"
+          element={
+            localStorage.getItem("adminLogged") === "true" ? (
+              <AdminPanel />
+            ) : (
+              <AdminLogin />
+            )
+          }
+        />
         <Route path="/lista-proyectos" element={<ListaProyectos />} />
+        <Route path="/historial-reservas" element={<HistorialReservas />} />
+        <Route path="/gerente-login" element={<GerenteLogin />} />
+        <Route
+          path="/gerente-panel"
+          element={
+            localStorage.getItem("gerenteLogged") === "true" ? (
+              <GerentePanel />
+            ) : (
+              <GerenteLogin />
+            )
+          }
+        />
       </Routes>
     </Router>
   );
