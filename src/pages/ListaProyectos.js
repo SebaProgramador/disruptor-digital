@@ -145,7 +145,11 @@ export default function ListaProyectos() {
       <h2 className="titulo">📂 Proyectos Subidos</h2>
 
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <button onClick={() => navigate("/admin-panel")} className="btn-volver">
+        <button
+          onClick={() => navigate("/admin-panel")}
+          className="btn-volver"
+          style={{ padding: "10px 20px", fontSize: "1rem" }}
+        >
           ⬅️ Volver al Panel
         </button>
       </div>
@@ -261,7 +265,9 @@ export default function ListaProyectos() {
           <p><strong>👤 Cliente:</strong> {proy.cliente}</p>
           <p><strong>📅 Desde:</strong> {new Date(proy.fechaInicio).toLocaleDateString()}</p>
           <p><strong>📅 Hasta:</strong> {new Date(proy.fechaFin).toLocaleDateString()}</p>
-          <p><strong>👥 Responsables:</strong> {proy.responsables?.join(", ")}</p>
+          {proy.responsables?.length > 0 && (
+            <p><strong>👥 Responsables:</strong> {proy.responsables.join(", ")}</p>
+          )}
           {proy.archivos && (
             <p>
               <strong>📎 Link archivo:</strong>{" "}

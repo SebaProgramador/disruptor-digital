@@ -4,7 +4,14 @@ import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
-import { collection, onSnapshot, deleteDoc, addDoc, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  deleteDoc,
+  addDoc,
+  doc,
+  setDoc,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -28,6 +35,7 @@ export default function AdminPanel() {
   const [editId, setEditId] = useState(null);
   const posiblesResponsables = ["Nicolás", "Eliana", "Sebastián"];
 
+  // 🔹 Autenticación y carga en tiempo real
   useEffect(() => {
     const logged = localStorage.getItem("adminLogged");
     if (logged !== "true") navigate("/admin-login");
@@ -36,9 +44,12 @@ export default function AdminPanel() {
       setReservas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
 
-    const unsubConfirmadas = onSnapshot(collection(db, "reservasConfirmadas"), (snapshot) => {
-      setReservasConfirmadas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
+    const unsubConfirmadas = onSnapshot(
+      collection(db, "reservasConfirmadas"),
+      (snapshot) => {
+        setReservasConfirmadas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      }
+    );
 
     const unsubProyectos = onSnapshot(collection(db, "proyectos"), (snapshot) => {
       setProyectos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
@@ -51,6 +62,7 @@ export default function AdminPanel() {
     };
   }, [navigate]);
 
+  // 🔹 Guardar en historial
   const guardarEnHistorial = async (reserva, estado) => {
     try {
       await addDoc(collection(db, "reservasHistorial"), {
@@ -63,10 +75,12 @@ export default function AdminPanel() {
     }
   };
 
+  // 🔹 Confirmar reserva
   const confirmarReserva = async (reserva) => {
     try {
-      await addDoc(collection(db, "reservasConfirmadas"), reserva);
-      await guardarEnHistorial(reserva, "confirmada");
+      const reservaConEstado = { ...reserva, estado: "confirmada" };
+      await addDoc(collection(db, "reservasConfirmadas"), reservaConEstado);
+      await guardarEnHistorial(reservaConEstado, "confirmada");
       await deleteDoc(doc(db, "reservas", reserva.id));
       toast.success(`✅ Reserva confirmada para ${reserva.nombre}`);
     } catch (error) {
@@ -75,6 +89,7 @@ export default function AdminPanel() {
     }
   };
 
+  // 🔹 Eliminar reserva
   const eliminarReserva = async (id) => {
     const reservaAEliminar = reservas.find((r) => r.id === id);
     if (!window.confirm("¿Deseas eliminar esta reserva?")) return;
@@ -89,6 +104,7 @@ export default function AdminPanel() {
     }
   };
 
+  // 🔹 Formulario proyecto
   const manejarCambioProyecto = (e) => {
     setFormularioProyecto({ ...formularioProyecto, [e.target.name]: e.target.value });
   };
@@ -129,7 +145,13 @@ export default function AdminPanel() {
       return;
     }
     const f = formularioProyecto;
-    if (!f.cliente || !f.fechaInicio || !f.fechaFin || f.responsables.length === 0 || (!f.archivos && !f.archivoData)) {
+    if (
+      !f.cliente ||
+      !f.fechaInicio ||
+      !f.fechaFin ||
+      f.responsables.length === 0 ||
+      (!f.archivos && !f.archivoData)
+    ) {
       toast.warn("⚠️ Completa todos los campos obligatorios");
       return;
     }
@@ -193,15 +215,27 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* Botones de navegación */}
+      {/* Botones navegación */}
       <div className="barra-superior">
-        <button className="btn-volver" onClick={() => navigate("/")}>🏠 Inicio</button>
-        <button className="boton-ver-proyectos" onClick={() => navigate("/lista-proyectos")}>📂 Ver Proyectos</button>
-        <button className="boton-ver-proyectos" onClick={() => navigate("/historial-reservas")}>📜 Historial</button>
-        <button className="btn-eliminar" style={{ backgroundColor: "#ff4d4d" }} onClick={() => {
-          localStorage.removeItem("adminLogged");
-          navigate("/admin-login");
-        }}>🚪 Cerrar Sesión</button>
+        <button className="btn-volver" onClick={() => navigate("/")}>
+          🏠 Inicio
+        </button>
+        <button className="boton-ver-proyectos" onClick={() => navigate("/lista-proyectos")}>
+          📂 Proyectos Actuales
+        </button>
+        <button className="boton-ver-proyectos" onClick={() => navigate("/historial-reservas")}>
+          📜 Historial
+        </button>
+        <button
+          className="btn-eliminar"
+          style={{ backgroundColor: "#ff4d4d" }}
+          onClick={() => {
+            localStorage.removeItem("adminLogged");
+            navigate("/admin-login");
+          }}
+        >
+          🚪 Cerrar Sesión
+        </button>
       </div>
 
       {/* Pendientes */}
@@ -218,8 +252,12 @@ export default function AdminPanel() {
               <p><strong>🗓️ Día:</strong> {reserva.dia}</p>
               <p><strong>⏰ Hora:</strong> {reserva.horario}</p>
               <div className="grupo-botones">
-                <button className="btn-accion" onClick={() => confirmarReserva(reserva)}>✅ Confirmar</button>
-                <button className="btn-eliminar" onClick={() => eliminarReserva(reserva.id)}>🗑️ Eliminar</button>
+                <button className="btn-accion" onClick={() => confirmarReserva(reserva)}>
+                  ✅ Confirmar
+                </button>
+                <button className="btn-eliminar" onClick={() => eliminarReserva(reserva.id)}>
+                  🗑️ Eliminar
+                </button>
               </div>
             </div>
           ))}
@@ -248,31 +286,101 @@ export default function AdminPanel() {
       <h3 className="subtitulo">📁 Subir Proyecto de Cliente</h3>
       <form onSubmit={guardarProyecto} className="tarjeta">
         <label className="label">Nombre del cliente</label>
-        <input type="text" name="cliente" className="input" value={formularioProyecto.cliente} onChange={manejarCambioProyecto} />
+        <input
+          type="text"
+          name="cliente"
+          className="input"
+          value={formularioProyecto.cliente}
+          onChange={manejarCambioProyecto}
+        />
         <label className="label">Desde</label>
-        <DatePicker selected={formularioProyecto.fechaInicio ? new Date(formularioProyecto.fechaInicio) : null} onChange={(date) => setFormularioProyecto({ ...formularioProyecto, fechaInicio: date.toISOString() })} dateFormat="yyyy-MM-dd" locale={es} className="calendario" />
+        <DatePicker
+          selected={formularioProyecto.fechaInicio ? new Date(formularioProyecto.fechaInicio) : null}
+          onChange={(date) =>
+            setFormularioProyecto({ ...formularioProyecto, fechaInicio: date.toISOString() })
+          }
+          dateFormat="yyyy-MM-dd"
+          locale={es}
+          className="calendario"
+        />
         <label className="label">Hasta</label>
-        <DatePicker selected={formularioProyecto.fechaFin ? new Date(formularioProyecto.fechaFin) : null} onChange={(date) => setFormularioProyecto({ ...formularioProyecto, fechaFin: date.toISOString() })} dateFormat="yyyy-MM-dd" locale={es} className="calendario" />
+        <DatePicker
+          selected={formularioProyecto.fechaFin ? new Date(formularioProyecto.fechaFin) : null}
+          onChange={(date) =>
+            setFormularioProyecto({ ...formularioProyecto, fechaFin: date.toISOString() })
+          }
+          dateFormat="yyyy-MM-dd"
+          locale={es}
+          className="calendario"
+        />
         <label className="label">Responsables</label>
         <div className="contenedor-responsables">
           {posiblesResponsables.map((nombre) => (
-            <button key={nombre} type="button" className="btn-responsable" onClick={() => toggleResponsable(nombre)} style={{ backgroundColor: formularioProyecto.responsables.includes(nombre) ? "#d4af37" : "#333", color: formularioProyecto.responsables.includes(nombre) ? "#000" : "#d4af37" }}>{nombre}</button>
+            <button
+              key={nombre}
+              type="button"
+              className="btn-responsable"
+              onClick={() => toggleResponsable(nombre)}
+              style={{
+                backgroundColor: formularioProyecto.responsables.includes(nombre)
+                  ? "#d4af37"
+                  : "#333",
+                color: formularioProyecto.responsables.includes(nombre)
+                  ? "#000"
+                  : "#d4af37",
+              }}
+            >
+              {nombre}
+            </button>
           ))}
         </div>
         <label className="label">Link de archivo (opcional)</label>
-        <input type="text" name="archivos" className="input" value={formularioProyecto.archivos} onChange={manejarCambioProyecto} />
+        <input
+          type="text"
+          name="archivos"
+          className="input"
+          value={formularioProyecto.archivos}
+          onChange={manejarCambioProyecto}
+        />
         <label className="label">O subir archivo:</label>
         <input type="file" onChange={manejarArchivo} className="input" />
         {formularioProyecto.archivoNombre && <p>📎 {formularioProyecto.archivoNombre}</p>}
         <label className="label">Link de Meet (opcional)</label>
-        <input type="text" name="linkMeet" className="input" value={formularioProyecto.linkMeet} onChange={manejarCambioProyecto} />
+        <input
+          type="text"
+          name="linkMeet"
+          className="input"
+          value={formularioProyecto.linkMeet}
+          onChange={manejarCambioProyecto}
+        />
         <div className="barra-superior">
-          <button type="submit" className="btn-accion" disabled={!clienteTieneReservaConfirmada(formularioProyecto.cliente)}>{editId ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}</button>
+          <button
+            type="submit"
+            className="btn-accion"
+            disabled={!clienteTieneReservaConfirmada(formularioProyecto.cliente)}
+          >
+            {editId ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}
+          </button>
           {editId && (
-            <button type="button" className="btn-cancelar" onClick={() => {
-              setFormularioProyecto({ cliente: "", fechaInicio: "", fechaFin: "", responsables: [], archivos: "", archivoData: "", archivoNombre: "", linkMeet: "" });
-              setEditId(null);
-            }}>❌ Cancelar edición</button>
+            <button
+              type="button"
+              className="btn-cancelar"
+              onClick={() => {
+                setFormularioProyecto({
+                  cliente: "",
+                  fechaInicio: "",
+                  fechaFin: "",
+                  responsables: [],
+                  archivos: "",
+                  archivoData: "",
+                  archivoNombre: "",
+                  linkMeet: "",
+                });
+                setEditId(null);
+              }}
+            >
+              ❌ Cancelar edición
+            </button>
           )}
         </div>
         {!clienteTieneReservaConfirmada(formularioProyecto.cliente) && (
@@ -280,7 +388,7 @@ export default function AdminPanel() {
         )}
       </form>
 
-      {/* Proyectos */}
+      {/* Lista de proyectos */}
       {proyectos.length > 0 && (
         <>
           <h3 className="subtitulo">📂 Proyectos Actuales</h3>
@@ -290,12 +398,32 @@ export default function AdminPanel() {
               <p><strong>📅 Desde:</strong> {new Date(proy.fechaInicio).toLocaleDateString()}</p>
               <p><strong>📅 Hasta:</strong> {new Date(proy.fechaFin).toLocaleDateString()}</p>
               <p><strong>👥 Responsables:</strong> {proy.responsables.join(", ")}</p>
-              {proy.archivos && <p><strong>📎 Link:</strong> <a href={proy.archivos} target="_blank" rel="noreferrer">Ver</a></p>}
-              {proy.archivoNombre && <p><strong>📄 Archivo:</strong> {proy.archivoNombre}</p>}
-              {proy.linkMeet && <p><strong>🎥 Meet:</strong> <a href={proy.linkMeet} target="_blank" rel="noreferrer">{proy.linkMeet}</a></p>}
+              {proy.archivos && (
+                <p>
+                  <strong>📎 Link:</strong>{" "}
+                  <a href={proy.archivos} target="_blank" rel="noreferrer">
+                    Ver
+                  </a>
+                </p>
+              )}
+              {proy.archivoNombre && (
+                <p><strong>📄 Archivo:</strong> {proy.archivoNombre}</p>
+              )}
+              {proy.linkMeet && (
+                <p>
+                  <strong>🎥 Meet:</strong>{" "}
+                  <a href={proy.linkMeet} target="_blank" rel="noreferrer">
+                    {proy.linkMeet}
+                  </a>
+                </p>
+              )}
               <div className="barra-superior">
-                <button className="btn-accion" onClick={() => cargarProyectoParaEditar(proy)}>✏️ Editar</button>
-                <button className="btn-eliminar" onClick={() => eliminarProyecto(proy.id)}>🗑️ Eliminar</button>
+                <button className="btn-accion" onClick={() => cargarProyectoParaEditar(proy)}>
+                  ✏️ Editar
+                </button>
+                <button className="btn-eliminar" onClick={() => eliminarProyecto(proy.id)}>
+                  🗑️ Eliminar
+                </button>
               </div>
             </div>
           ))}

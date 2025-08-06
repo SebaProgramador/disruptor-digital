@@ -124,7 +124,7 @@ export default function AdminLogin() {
     <div style={estilos.fondo}>
       <div style={estilos.caja}>
         <img
-          src="/portada-disruptor.jpg"
+          src="/logo.jpg"
           alt="Logo Disruptor"
           style={estilos.logo}
         />
