@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/pages/AdminLogin.js
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminLogin() {
@@ -6,7 +7,16 @@ export default function AdminLogin() {
   const [clave, setClave] = useState("");
   const [error, setError] = useState("");
   const [mostrarClave, setMostrarClave] = useState(false);
+  const [recordarme, setRecordarme] = useState(true);
   const navigate = useNavigate();
+
+  const ADMIN_USER = "admin";
+  const ADMIN_PASS = "admin123";
+
+  useEffect(() => {
+    const u = localStorage.getItem("adminRememberUser");
+    if (u) setUsuario(u);
+  }, []);
 
   const estilos = {
     fondo: {
@@ -107,13 +117,26 @@ export default function AdminLogin() {
       height: "1px",
       overflow: "hidden",
     },
+    check: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      color: "#d4af7f",
+      fontSize: ".9rem",
+      marginBottom: 15,
+      cursor: "pointer",
+    },
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
-
-    if (usuario === "admin" && clave === "admin123") {
+    if (usuario === ADMIN_USER && clave === ADMIN_PASS) {
       localStorage.setItem("adminLogged", "true");
+      if (recordarme) {
+        localStorage.setItem("adminRememberUser", usuario);
+      } else {
+        localStorage.removeItem("adminRememberUser");
+      }
       navigate("/admin-panel");
     } else {
       setError("❌ Usuario o clave incorrecta.");
@@ -123,16 +146,14 @@ export default function AdminLogin() {
   return (
     <div style={estilos.fondo}>
       <div style={estilos.caja}>
-        <img
-          src="/logo.jpg"
-          alt="Logo Disruptor"
-          style={estilos.logo}
-        />
+        <img src="/logo.jpg" alt="Logo Disruptor" style={estilos.logo} />
         <h2 style={estilos.titulo}>🔒 Ingreso Administrador</h2>
         {error && <p style={estilos.error}>{error}</p>}
 
         <form onSubmit={handleLogin} noValidate>
-          <label htmlFor="usuario" style={estilos.labelOculto}>Usuario</label>
+          <label htmlFor="usuario" style={estilos.labelOculto}>
+            Usuario
+          </label>
           <input
             id="usuario"
             type="text"
@@ -145,7 +166,10 @@ export default function AdminLogin() {
             }}
             required
           />
-          <label htmlFor="clave" style={estilos.labelOculto}>Contraseña</label>
+
+          <label htmlFor="clave" style={estilos.labelOculto}>
+            Contraseña
+          </label>
           <input
             id="clave"
             type={mostrarClave ? "text" : "password"}
@@ -158,6 +182,7 @@ export default function AdminLogin() {
             }}
             required
           />
+
           <div
             style={estilos.contenedorMostrarClave}
             onClick={() => setMostrarClave(!mostrarClave)}
@@ -170,6 +195,16 @@ export default function AdminLogin() {
             />
             Mostrar contraseña
           </div>
+
+          <label style={estilos.check}>
+            <input
+              type="checkbox"
+              checked={recordarme}
+              onChange={() => setRecordarme(!recordarme)}
+            />
+            Recordarme
+          </label>
+
           <button type="submit" style={estilos.boton}>
             👉 Ingresar
           </button>
