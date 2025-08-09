@@ -1,5 +1,4 @@
-// src/pages/AdminLogin.js
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminLogin() {
@@ -7,12 +6,18 @@ export default function AdminLogin() {
   const [clave, setClave] = useState("");
   const [error, setError] = useState("");
   const [mostrarClave, setMostrarClave] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Rutas de assets compatibles con producción (www)
-  const bgUrl = `${process.env.PUBLIC_URL}/fondo-login.gif`;
-  const logoUrl = `${process.env.PUBLIC_URL}/logo.jpg`;
+  // Credenciales locales (puedes cambiarlas si quieres)
+  const ADMIN_USER = "admin";
+  const ADMIN_PASS = "admin123";
 
+  // Assets desde /public (válidos en localhost y dominio)
+  const bgUrl = useMemo(() => `${process.env.PUBLIC_URL}/fondo-login.gif`, []);
+  const logoUrl = useMemo(() => `${process.env.PUBLIC_URL}/logo.jpg`, []);
+
+  // Estilos unificados (negro/café/dorado), mobile-first
   const estilos = {
     fondo: {
       minHeight: "100vh",
@@ -25,85 +30,42 @@ export default function AdminLogin() {
       justifyContent: "center",
       alignItems: "center",
       fontFamily: "'Segoe UI', sans-serif",
-      flexDirection: "column",
-      padding: 20,
+      padding: 16,
     },
     caja: {
-      backgroundColor: "rgba(30, 30, 30, 0.95)",
-      padding: 40,
-      borderRadius: 15,
-      border: "2px solid #a8854f",
-      boxShadow: "0 0 25px #a8854f80",
       width: "100%",
-      maxWidth: 400,
-      boxSizing: "border-box",
+      maxWidth: 420,
+      background: "rgba(18,18,18,0.96)",
+      border: "2px solid #a8854f",
+      borderRadius: 14,
+      padding: 28,
+      boxShadow: "0 0 24px #a8854f66",
+      backdropFilter: "blur(2px)",
+    },
+    header: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
       textAlign: "center",
     },
     logo: {
-      width: "100%",
-      maxWidth: 200,
-      marginBottom: 20,
+      width: 96,
+      height: 96,
       borderRadius: 12,
+      objectFit: "cover",
+      border: "2px solid #a8854f",
       boxShadow: "0 0 14px #a8854f88",
+      userSelect: "none",
     },
     titulo: {
       fontSize: "1.8rem",
-      marginBottom: 20,
-      textAlign: "center",
-      color: "#d4af7f",
+      color: "#ffd98a",
+      textShadow: "0 0 6px rgba(255,217,138,0.5)",
+      fontWeight: 800,
     },
-    input: {
-      width: "100%",
-      padding: 10,
-      marginBottom: 15,
-      borderRadius: 8,
-      border: "1px solid #a8854f",
-      backgroundColor: "#2b2b2b",
-      color: "#fff",
-      fontSize: "1rem",
-      boxSizing: "border-box",
-    },
-    boton: {
-      width: "100%",
-      padding: 12,
-      backgroundColor: "#a8854f",
-      border: "none",
-      borderRadius: 8,
-      color: "#121212",
-      fontWeight: "bold",
-      fontSize: "1rem",
-      cursor: "pointer",
-      boxShadow: "0 0 10px #a8854f88",
-      marginTop: 5,
-    },
-    botonSecundario: {
-      width: "100%",
-      padding: 12,
-      backgroundColor: "#444",
-      border: "none",
-      borderRadius: 8,
-      color: "#d4af7f",
-      fontWeight: "bold",
-      fontSize: "1rem",
-      cursor: "pointer",
-      boxShadow: "0 0 8px #666",
-      marginTop: 15,
-    },
-    error: {
-      color: "#ff6666",
-      textAlign: "center",
-      marginBottom: 10,
-      fontWeight: "bold",
-    },
-    contenedorMostrarClave: {
-      display: "flex",
-      alignItems: "center",
-      marginBottom: 15,
-      color: "#d4af7f",
-      fontSize: "0.9rem",
-      userSelect: "none",
-      cursor: "pointer",
-    },
+    form: { marginTop: 8 },
     labelOculto: {
       position: "absolute",
       left: "-9999px",
@@ -112,77 +74,175 @@ export default function AdminLogin() {
       height: "1px",
       overflow: "hidden",
     },
+    input: {
+      width: "100%",
+      padding: "12px 14px",
+      marginBottom: 12,
+      borderRadius: 10,
+      border: "1px solid #a8854f",
+      background: "#262626",
+      color: "#fff",
+      fontSize: "1rem",
+      outline: "none",
+      boxShadow: "inset 0 0 6px rgba(168,133,79,0.25)",
+    },
+    row: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 12,
+      color: "#d4af7f",
+      fontSize: ".95rem",
+      userSelect: "none",
+    },
+    checkbox: { width: 18, height: 18, cursor: "pointer" },
+    error: {
+      color: "#ff6b6b",
+      background: "rgba(255,107,107,0.1)",
+      border: "1px solid #ff6b6b99",
+      borderRadius: 8,
+      padding: "8px 10px",
+      fontWeight: 700,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    boton: {
+      width: "100%",
+      padding: "12px 14px",
+      background: "#a8854f",
+      color: "#121212",
+      border: "none",
+      borderRadius: 10,
+      fontWeight: 800,
+      fontSize: "1rem",
+      cursor: "pointer",
+      boxShadow: "0 0 12px #a8854f88",
+      transition: "transform .08s ease",
+    },
+    botonDisabled: {
+      opacity: 0.75,
+      cursor: "not-allowed",
+      filter: "grayscale(0.2)",
+    },
+    botonSec: {
+      width: "100%",
+      padding: "12px 14px",
+      background: "#3a3a3a",
+      color: "#d4af7f",
+      border: "none",
+      borderRadius: 10,
+      fontWeight: 700,
+      fontSize: "1rem",
+      cursor: "pointer",
+      marginTop: 12,
+      boxShadow: "0 0 8px #000",
+    },
+    nota: { marginTop: 10, fontSize: ".85rem", color: "#cfcfcf", textAlign: "center" },
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
+    if (cargando) return;
 
-    if (usuario === "admin" && clave === "admin123") {
-      localStorage.setItem("adminLogged", "true");
-      navigate("/admin-panel");
-    } else {
-      setError("❌ Usuario o clave incorrecta.");
+    const u = usuario.trim();
+    const p = clave.trim();
+
+    if (!u || !p) {
+      setError("❌ Completa usuario y contraseña.");
+      return;
     }
+
+    setCargando(true);
+    setError("");
+
+    setTimeout(() => {
+      if (u === ADMIN_USER && p === ADMIN_PASS) {
+        localStorage.setItem("adminLogged", "true");
+        // (opcional) limpiar otros roles:
+        localStorage.removeItem("gerenteLogged");
+        navigate("/admin-panel", { replace: true });
+      } else {
+        setError("❌ Usuario o clave incorrecta.");
+      }
+      setCargando(false);
+    }, 250); // micro-delay para UX
   };
 
   return (
     <div style={estilos.fondo}>
       <div style={estilos.caja}>
-        <img
-          src={logoUrl}
-          alt="Logo Disruptor"
-          style={estilos.logo}
-        />
-        <h2 style={estilos.titulo}>🔒 Ingreso Administrador</h2>
-        {error && <p style={estilos.error}>{error}</p>}
+        <div style={estilos.header}>
+          <img src={logoUrl} alt="Logo Disruptor" style={estilos.logo} draggable={false} />
+          <h2 style={estilos.titulo}>🔒 Ingreso Administrador</h2>
+        </div>
 
-        <form onSubmit={handleLogin} noValidate>
-          <label htmlFor="usuario" style={estilos.labelOculto}>Usuario</label>
+        {error && <div role="alert" style={estilos.error}>{error}</div>}
+
+        <form style={estilos.form} onSubmit={handleLogin} noValidate>
+          <label htmlFor="admin-usuario" style={estilos.labelOculto}>Usuario</label>
           <input
-            id="usuario"
+            id="admin-usuario"
             type="text"
             placeholder="Usuario"
             style={estilos.input}
             value={usuario}
+            autoComplete="username"
             onChange={(e) => {
               setUsuario(e.target.value);
               if (error) setError("");
             }}
             required
           />
-          <label htmlFor="clave" style={estilos.labelOculto}>Contraseña</label>
+
+          <label htmlFor="admin-clave" style={estilos.labelOculto}>Contraseña</label>
           <input
-            id="clave"
+            id="admin-clave"
             type={mostrarClave ? "text" : "password"}
             placeholder="Contraseña"
             style={estilos.input}
             value={clave}
+            autoComplete="current-password"
             onChange={(e) => {
               setClave(e.target.value);
               if (error) setError("");
             }}
             required
           />
+
           <div
-            style={estilos.contenedorMostrarClave}
-            onClick={() => setMostrarClave(!mostrarClave)}
+            style={estilos.row}
+            onClick={() => setMostrarClave((v) => !v)}
+            role="button"
+            aria-label="Mostrar u ocultar contraseña"
           >
             <input
               type="checkbox"
               checked={mostrarClave}
-              onChange={() => setMostrarClave(!mostrarClave)}
-              style={{ marginRight: 8 }}
+              onChange={() => setMostrarClave((v) => !v)}
+              style={estilos.checkbox}
             />
             Mostrar contraseña
           </div>
-          <button type="submit" style={estilos.boton}>
-            👉 Ingresar
+
+          <button
+            type="submit"
+            style={{ ...estilos.boton, ...(cargando ? estilos.botonDisabled : {}) }}
+            disabled={cargando}
+          >
+            {cargando ? "Ingresando..." : "👉 Ingresar"}
           </button>
         </form>
 
-        <button style={estilos.botonSecundario} onClick={() => navigate("/")}>
+        <button
+          style={estilos.botonSec}
+          onClick={() => navigate("/", { replace: true })}
+        >
           ⬅️ Volver al Inicio
         </button>
+
+        <div style={estilos.nota}>
+          En el sitio publicado debes iniciar sesión de nuevo (el <b>localStorage</b> de <b>localhost</b> no se comparte con <b>disruptordigital.cl</b>).
+        </div>
       </div>
     </div>
   );

@@ -1,27 +1,23 @@
-// src/firebase.js
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// firebase.js
+import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCxYXUZegxjs_qivThmyoZDPZZlyKmYw1U",
-  authDomain: "disruptor-digital-5909a.firebaseapp.com",
-  projectId: "disruptor-digital-5909a",
-  storageBucket: "disruptor-digital-5909a.firebasestorage.app",
-  messagingSenderId: "97847727673",
-  appId: "1:97847727673:web:285eb383a4f7467ab41fe8",
+  apiKey: "AIzaSyDYqv1V9Wvph-L6n9AZ5ggoMKZ_Ly92k74",
+  authDomain: "disruptor-digital-368e6.firebaseapp.com",
+  projectId: "disruptor-digital-368e6",
+  storageBucket: "disruptor-digital-368e6.appspot.com",
+  messagingSenderId: "736597173070",
+  appId: "1:736597173070:web:1a4bc15de29ea97cff341f",
 };
 
-// Evita doble inicialización en hot-reload
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-// Exports únicos, sin default
-export const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+export const auth = getAuth(app);
 
-// Debug opcional (puedes borrar)
-if (typeof window !== "undefined") {
-  console.log("Firebase listo:", app.options.projectId);
-}
+// 🔐 login anónimo para que Firestore permita leer/escribir
+signInAnonymously(auth).catch((e) => console.error("anon auth error:", e));
+
+// (opcional) ver en consola si estás autenticado
+onAuthStateChanged(auth, (u) => console.log("Auth listo:", !!u));
