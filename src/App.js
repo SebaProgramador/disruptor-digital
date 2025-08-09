@@ -1,6 +1,6 @@
 // src/App.js
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import Inicio from "./pages/Inicio";
 import Politicas from "./pages/Politicas";
@@ -16,63 +16,59 @@ import GerenteLogin from "./pages/GerenteLogin";
 import PrivateRouteAdmin from "./routes/PrivateRouteAdmin";
 import PrivateRouteGerente from "./routes/PrivateRouteGerente";
 
-function App() {
+export default function App() {
   return (
-    <Router>
-      <Routes>
-        {/* públicas */}
-        <Route path="/" element={<Inicio />} />
-        <Route path="/politicas" element={<Politicas />} />
-        <Route path="/reservar" element={<ReservaAsesoria />} />
+    <Routes>
+      {/* públicas */}
+      <Route path="/" element={<Inicio />} />
+      <Route path="/politicas" element={<Politicas />} />
+      <Route path="/reservar" element={<ReservaAsesoria />} />
 
-        {/* auth admin */}
-        <Route path="/admin-login" element={<AdminLogin />} />
-        <Route
-          path="/admin-panel"
-          element={
-            <PrivateRouteAdmin>
-              <AdminPanel />
-            </PrivateRouteAdmin>
-          }
-        />
-        <Route
-          path="/lista-reservas"
-          element={
-            <PrivateRouteAdmin>
-              <ListaReservas />
-            </PrivateRouteAdmin>
-          }
-        />
-        <Route
-          path="/lista-proyectos"
-          element={
-            <PrivateRouteAdmin>
-              <ListaProyectos />
-            </PrivateRouteAdmin>
-          }
-        />
-        <Route
-          path="/historial-reservas"
-          element={
-            <PrivateRouteAdmin>
-              <HistorialReservas />
-            </PrivateRouteAdmin>
-          }
-        />
+      {/* auth admin */}
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route
+        path="/admin-panel"
+        element={
+          <PrivateRouteAdmin>
+            <AdminPanel />
+          </PrivateRouteAdmin>
+        }
+      />
+      <Route
+        path="/lista-reservas"
+        element={
+          <PrivateRouteAdmin>
+            <ListaReservas />
+          </PrivateRouteAdmin>
+        }
+      />
+      <Route
+        path="/lista-proyectos"
+        element={
+          <PrivateRouteAdmin>
+            <ListaProyectos />
+          </PrivateRouteAdmin>
+        }
+      />
+      <Route
+        path="/historial-reservas"
+        element={
+          <PrivateRouteAdmin>
+            <HistorialReservas />
+          </PrivateRouteAdmin>
+        }
+      />
 
-        {/* auth gerente */}
-        <Route path="/gerente-login" element={<GerenteLogin />} />
-        <Route
-          path="/gerente-panel"
-          element={
-            <PrivateRouteGerente>
-              <GerentePanel />
-            </PrivateRouteGerente>
-          }
-        />
-      </Routes>
-    </Router>
+      {/* auth gerente */}
+      <Route path="/gerente-login" element={<GerenteLogin />} />
+      <Route
+        path="/gerente-panel"
+        element={
+          <PrivateRouteGerente>
+            <GerentePanel />
+          </PrivateRouteGerente>
+        }
+      />
+    </Routes>
   );
 }
-
-export default App;
