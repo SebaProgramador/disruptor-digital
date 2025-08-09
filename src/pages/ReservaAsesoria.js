@@ -37,7 +37,7 @@ const SERVICIOS = [
 // EmailJS (solo ADMIN)
 const EMAILJS_SERVICE_ID = "service_ajyjiwj";         // ✅ tu Service ID
 const EMAILJS_TEMPLATE_ID = "template_k6flmfv";       // ✅ tu Template ID
-const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";  // ⛳ pega tu Public Key de EmailJS
+const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";       // ⛳ tu Public Key EmailJS
 
 const esFestivo = (fecha) => {
   const fechaStr = fecha.toISOString().split("T")[0];
@@ -63,9 +63,9 @@ const obtenerFechasDisponibles = () => {
 
 const obtenerHorasDisponibles = async (fechaSeleccionada) => {
   const horarios = [
-    "09:00", "10:00", "11:00", "12:00",
-    "13:00", "14:00", "15:00", "16:00",
-    "17:00", "18:00", "19:00"
+    "09:00","10:00","11:00","12:00",
+    "13:00","14:00","15:00","16:00",
+    "17:00","18:00","19:00"
   ];
 
   const snapshot = await getDocs(
@@ -84,6 +84,28 @@ const obtenerHorasDisponibles = async (fechaSeleccionada) => {
   }));
 };
 
+// ✅ Local: evita desfases de zona horaria (no usar "YYYY-MM-DD" directo en Date)
+const toLocalDate = (yyyy_mm_dd) => {
+  const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// ✅ Formato bonito con día de la semana, dd mes yyyy (en castellano)
+const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MESES = [
+  "enero","febrero","marzo","abril","mayo","junio",
+  "julio","agosto","septiembre","octubre","noviembre","diciembre"
+];
+const pad2 = (n) => String(n).padStart(2, "0");
+const formatoFechaCompleta = (date) => {
+  const w = DIAS[date.getDay()];
+  const dd = pad2(date.getDate());
+  const mm = MESES[date.getMonth()];
+  const yyyy = date.getFullYear();
+  return `${w}, ${dd} ${mm} ${yyyy}`;
+};
+
+// (Se mantiene para los labels del selector de días)
 const formatoFecha = (fecha) =>
   fecha.toLocaleDateString("es-CL", {
     weekday: "long",
@@ -202,10 +224,13 @@ export default function ReservaAsesoria() {
       // 1) Guardar en Firebase
       await addDoc(collection(db, "reservas"), formulario);
 
-      // 2) Aviso por WhatsApp al cliente
+      // 2) WhatsApp al cliente: fecha de reserva + fecha de reunión con día de la semana
+      const fechaReservaTexto = formatoFechaCompleta(new Date()); // hoy (local)
+      const fechaReunionTexto = formatoFechaCompleta(toLocalDate(formulario.dia)); // del form (local)
+
       window.open(
         `https://wa.me/56955348010?text=${encodeURIComponent(
-          `Hola ${formulario.nombre}, recibimos tu reserva para el servicio de "${formulario.servicioDeseado}" el día ${formulario.dia} a las ${formulario.horario}. Te responderemos dentro de 24 horas. ¡Gracias por confiar en nosotros!`
+          `Hola ${formulario.nombre}, recibimos tu reserva el ${fechaReservaTexto} para el servicio de "${formulario.servicioDeseado}". Tu reunión es el día ${fechaReunionTexto} a las ${formulario.horario}. Te responderemos dentro de 24 horas. ¡Gracias por confiar en nosotros!`
         )}`,
         "_blank"
       );
@@ -304,7 +329,7 @@ export default function ReservaAsesoria() {
           <label style={estilos.etiqueta}><FaClock /> Horario:</label>
           <select name="horario" value={formulario.horario} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito || horariosDisponibles.length === 0}>
             {horariosDisponibles.length === 0
-              ? ["09:00", "10:00", "11:00"].map((hora) => (
+              ? ["09:00","10:00","11:00"].map((hora) => (
                   <option key={hora} value={hora}>{hora}</option>
                 ))
               : horariosDisponibles.map(({ hora, disponible }) => (

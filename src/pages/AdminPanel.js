@@ -1,5 +1,5 @@
 // src/pages/AdminPanel.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
 import DatePicker from "react-datepicker";
@@ -41,6 +41,9 @@ export default function AdminPanel() {
   const TABS = ["Pendientes", "Confirmadas", "Subir Proyecto", "Proyectos"];
   const [tab, setTab] = useState("Pendientes");
   const [busqueda, setBusqueda] = useState("");
+
+  // ====== REF para PDF (captura la vista completa debajo del header) ======
+  const printRef = useRef(null);
 
   // ====== FORM PROYECTO ======
   const [formularioProyecto, setFormularioProyecto] = useState({
@@ -251,6 +254,51 @@ export default function AdminPanel() {
     }
   };
 
+  // ====== PDF (import dinámico para evitar import/first) ======
+  const exportarPDF = async () => {
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      const area = printRef.current;
+      if (!area) return;
+
+      const canvas = await html2canvas(area, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+      let position = 0;
+      let heightLeft = imgHeight;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        pdf.addPage();
+        position = heightLeft - imgHeight;
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const nombreArchivo = `AdminPanel_${tab}_${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:T]/g, "-")}.pdf`;
+      pdf.save(nombreArchivo);
+    } catch (e) {
+      console.error(e);
+      toast.error("❌ No se pudo exportar el PDF");
+    }
+  };
+
   // ====== FILTROS VISUALES ======
   const reservasFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -276,6 +324,7 @@ export default function AdminPanel() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
           <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historial</button>
+          <button className="btn btn-secondary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
           <button
             className="btn btn-danger"
             onClick={() => {
@@ -288,272 +337,275 @@ export default function AdminPanel() {
         </div>
       </header>
 
-      {/* KPIs */}
-      <section className="resumen-panel" style={{ marginTop: 12 }}>
-        <div className="tarjeta-resumen kpi-ok">
-          <h3>📋 Pendientes</h3>
-          <p>{reservas.length}</p>
-        </div>
-        <div className="tarjeta-resumen kpi-ok">
-          <h3>✅ Confirmadas</h3>
-          <p>{reservasConfirmadas.length}</p>
-        </div>
-        <div className="tarjeta-resumen kpi-ok">
-          <h3>📂 Proyectos</h3>
-          <p>{proyectos.length}</p>
-        </div>
-      </section>
-
-      {/* TABS */}
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={`tab-${t}`}
-            className={`tab-btn ${tab === t ? "active" : ""}`}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
-        ))}
-        <div className="spacer" />
-        <input
-          className="input input-compact"
-          placeholder="Buscar cliente..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-      </nav>
-
-      {/* TAB: PENDIENTES */}
-      {tab === "Pendientes" && (
-        <section>
-          {reservasFiltradas.length === 0 ? (
-            <div className="tarjeta vacio">No hay reservas pendientes.</div>
-          ) : (
-            reservasFiltradas.map((reserva, i) => (
-              <div key={`pend-${reserva.id}-${i}`} className="tarjeta fila-reserva">
-                <div className="reserva-info">
-                  <div className="reserva-nombre">
-                    <strong>{reserva.nombre}</strong>
-                    <span className="chip">{reserva.rubro || "—"}</span>
-                  </div>
-                  <div className="reserva-detalles">
-                    <span>📧 {reserva.email}</span>
-                    <span>📱 {reserva.telefono}</span>
-                    <span>🏢 {reserva.nombreEmpresa || "—"}</span>
-                  </div>
-                  <div className="reserva-fecha">
-                    <span>🗓️ {reserva.dia}</span>
-                    <span>⏰ {reserva.horario}</span>
-                  </div>
-                </div>
-                <div className="reserva-acciones">
-                  <a className="btn btn-ghost" href={linkWhatsapp(reserva)} target="_blank" rel="noreferrer">📲 WhatsApp</a>
-                  <button className="btn btn-primary" onClick={() => confirmarReserva(reserva)}>✅ Confirmar</button>
-                  <button className="btn btn-danger" onClick={() => eliminarReservaPendiente(reserva.id)}>🗑️ Eliminar</button>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      )}
-
-      {/* TAB: CONFIRMADAS */}
-      {tab === "Confirmadas" && (
-        <section>
-          {confirmadasFiltradas.length === 0 ? (
-            <div className="tarjeta vacio">No hay reservas confirmadas.</div>
-          ) : (
-            confirmadasFiltradas.map((reserva, i) => (
-              <div key={`conf-${reserva.id}-${i}`} className="tarjeta fila-reserva">
-                <div className="reserva-info">
-                  <div className="reserva-nombre">
-                    <strong>{reserva.nombre}</strong>
-                    <span className="chip chip-ok">Confirmada</span>
-                  </div>
-                  <div className="reserva-detalles">
-                    <span>📧 {reserva.email}</span>
-                    <span>📱 {reserva.telefono}</span>
-                    <span>🏢 {reserva.nombreEmpresa || "—"}</span>
-                  </div>
-                  <div className="reserva-fecha">
-                    <span>🗓️ {reserva.dia}</span>
-                    <span>⏰ {reserva.horario}</span>
-                  </div>
-                </div>
-                <div className="reserva-acciones">
-                  <a className="btn btn-ghost" href={linkWhatsapp({ ...reserva, estado: "confirmada" })} target="_blank" rel="noreferrer">📲 WhatsApp</a>
-                  <button className="btn btn-danger" onClick={() => eliminarReservaConfirmada(reserva.id)}>🗑️ Eliminar</button>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      )}
-
-      {/* TAB: SUBIR PROYECTO */}
-      {tab === "Subir Proyecto" && (
-        <section className="tarjeta">
-          <h3 className="subtitulo" style={{ marginTop: 0 }}>📁 Subir Proyecto</h3>
-
-          <label className="label">Cliente</label>
-          <input
-            type="text"
-            name="cliente"
-            className="input"
-            value={formularioProyecto.cliente}
-            onChange={onChangeProyecto}
-            placeholder="Nombre exactamente como en la reserva"
-          />
-
-          <div className="grid-2">
-            <div>
-              <label className="label">Desde</label>
-              <DatePicker
-                selected={formularioProyecto.fechaInicio ? new Date(formularioProyecto.fechaInicio) : null}
-                onChange={(date) =>
-                  setFormularioProyecto({ ...formularioProyecto, fechaInicio: date.toISOString() })
-                }
-                dateFormat="yyyy-MM-dd"
-                locale={es}
-                className="calendario"
-              />
-            </div>
-            <div>
-              <label className="label">Hasta</label>
-              <DatePicker
-                selected={formularioProyecto.fechaFin ? new Date(formularioProyecto.fechaFin) : null}
-                onChange={(date) =>
-                  setFormularioProyecto({ ...formularioProyecto, fechaFin: date.toISOString() })
-                }
-                dateFormat="yyyy-MM-dd"
-                locale={es}
-                className="calendario"
-              />
-            </div>
+      {/* Todo lo siguiente se captura en PDF */}
+      <div ref={printRef}>
+        {/* KPIs */}
+        <section className="resumen-panel" style={{ marginTop: 12 }}>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>📋 Pendientes</h3>
+            <p>{reservas.length}</p>
           </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>✅ Confirmadas</h3>
+            <p>{reservasConfirmadas.length}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>📂 Proyectos</h3>
+            <p>{proyectos.length}</p>
+          </div>
+        </section>
 
-          <label className="label">Responsables</label>
-          <div className="contenedor-responsables">
-            {posiblesResponsables.map((n) => {
-              const activo = formularioProyecto.responsables.includes(n);
-              return (
+        {/* TABS */}
+        <nav className="tabs">
+          {TABS.map((t) => (
+            <button
+              key={`tab-${t}`}
+              className={`tab-btn ${tab === t ? "active" : ""}`}
+              onClick={() => setTab(t)}
+            >
+              {t}
+            </button>
+          ))}
+          <div className="spacer" />
+          <input
+            className="input input-compact"
+            placeholder="Buscar cliente..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </nav>
+
+        {/* TAB: PENDIENTES */}
+        {tab === "Pendientes" && (
+          <section>
+            {reservasFiltradas.length === 0 ? (
+              <div className="tarjeta vacio">No hay reservas pendientes.</div>
+            ) : (
+              reservasFiltradas.map((reserva, i) => (
+                <div key={`pend-${reserva.id}-${i}`} className="tarjeta fila-reserva">
+                  <div className="reserva-info">
+                    <div className="reserva-nombre">
+                      <strong>{reserva.nombre}</strong>
+                      <span className="chip">{reserva.rubro || "—"}</span>
+                    </div>
+                    <div className="reserva-detalles">
+                      <span>📧 {reserva.email}</span>
+                      <span>📱 {reserva.telefono}</span>
+                      <span>🏢 {reserva.nombreEmpresa || "—"}</span>
+                    </div>
+                    <div className="reserva-fecha">
+                      <span>🗓️ {reserva.dia}</span>
+                      <span>⏰ {reserva.horario}</span>
+                    </div>
+                  </div>
+                  <div className="reserva-acciones">
+                    <a className="btn btn-ghost" href={linkWhatsapp(reserva)} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                    <button className="btn btn-primary" onClick={() => confirmarReserva(reserva)}>✅ Confirmar</button>
+                    <button className="btn btn-danger" onClick={() => eliminarReservaPendiente(reserva.id)}>🗑️ Eliminar</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+        )}
+
+        {/* TAB: CONFIRMADAS */}
+        {tab === "Confirmadas" && (
+          <section>
+            {confirmadasFiltradas.length === 0 ? (
+              <div className="tarjeta vacio">No hay reservas confirmadas.</div>
+            ) : (
+              confirmadasFiltradas.map((reserva, i) => (
+                <div key={`conf-${reserva.id}-${i}`} className="tarjeta fila-reserva">
+                  <div className="reserva-info">
+                    <div className="reserva-nombre">
+                      <strong>{reserva.nombre}</strong>
+                      <span className="chip chip-ok">Confirmada</span>
+                    </div>
+                    <div className="reserva-detalles">
+                      <span>📧 {reserva.email}</span>
+                      <span>📱 {reserva.telefono}</span>
+                      <span>🏢 {reserva.nombreEmpresa || "—"}</span>
+                    </div>
+                    <div className="reserva-fecha">
+                      <span>🗓️ {reserva.dia}</span>
+                      <span>⏰ {reserva.horario}</span>
+                    </div>
+                  </div>
+                  <div className="reserva-acciones">
+                    <a className="btn btn-ghost" href={linkWhatsapp({ ...reserva, estado: "confirmada" })} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                    <button className="btn btn-danger" onClick={() => eliminarReservaConfirmada(reserva.id)}>🗑️ Eliminar</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+        )}
+
+        {/* TAB: SUBIR PROYECTO */}
+        {tab === "Subir Proyecto" && (
+          <section className="tarjeta">
+            <h3 className="subtitulo" style={{ marginTop: 0 }}>📁 Subir Proyecto</h3>
+
+            <label className="label">Cliente</label>
+            <input
+              type="text"
+              name="cliente"
+              className="input"
+              value={formularioProyecto.cliente}
+              onChange={onChangeProyecto}
+              placeholder="Nombre exactamente como en la reserva"
+            />
+
+            <div className="grid-2">
+              <div>
+                <label className="label">Desde</label>
+                <DatePicker
+                  selected={formularioProyecto.fechaInicio ? new Date(formularioProyecto.fechaInicio) : null}
+                  onChange={(date) =>
+                    setFormularioProyecto({ ...formularioProyecto, fechaInicio: date.toISOString() })
+                  }
+                  dateFormat="yyyy-MM-dd"
+                  locale={es}
+                  className="calendario"
+                />
+              </div>
+              <div>
+                <label className="label">Hasta</label>
+                <DatePicker
+                  selected={formularioProyecto.fechaFin ? new Date(formularioProyecto.fechaFin) : null}
+                  onChange={(date) =>
+                    setFormularioProyecto({ ...formularioProyecto, fechaFin: date.toISOString() })
+                  }
+                  dateFormat="yyyy-MM-dd"
+                  locale={es}
+                  className="calendario"
+                />
+              </div>
+            </div>
+
+            <label className="label">Responsables</label>
+            <div className="contenedor-responsables">
+              {posiblesResponsables.map((n) => {
+                const activo = formularioProyecto.responsables.includes(n);
+                return (
+                  <button
+                    type="button"
+                    key={`resp-${n}`}
+                    className={`chip-toggle ${activo ? "on" : ""}`}
+                    onClick={() => toggleResponsable(n)}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className="label">Link de archivo (opcional)</label>
+            <input
+              type="text"
+              name="archivos"
+              className="input"
+              value={formularioProyecto.archivos}
+              onChange={onChangeProyecto}
+              placeholder="https://..."
+            />
+
+            <label className="label">O subir archivo</label>
+            <input type="file" onChange={manejarArchivo} className="input" />
+            {formularioProyecto.archivoNombre && <p>📎 {formularioProyecto.archivoNombre}</p>}
+
+            <label className="label">Link de Meet (opcional)</label>
+            <input
+              type="text"
+              name="linkMeet"
+              className="input"
+              value={formularioProyecto.linkMeet}
+              onChange={onChangeProyecto}
+              placeholder="https://meet.google.com/xxx-xxxx-xxx"
+            />
+
+            <div className="barra-superior" style={{ gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                onClick={guardarProyecto}
+                disabled={!clienteTieneReservaConfirmada(formularioProyecto.cliente)}
+              >
+                {editId ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}
+              </button>
+              {editId && (
                 <button
                   type="button"
-                  key={`resp-${n}`}
-                  className={`chip-toggle ${activo ? "on" : ""}`}
-                  onClick={() => toggleResponsable(n)}
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setFormularioProyecto({
+                      cliente: "",
+                      fechaInicio: "",
+                      fechaFin: "",
+                      responsables: [],
+                      archivos: "",
+                      archivoData: "",
+                      archivoNombre: "",
+                      linkMeet: "",
+                    });
+                    setEditId(null);
+                  }}
                 >
-                  {n}
+                  ❌ Cancelar edición
                 </button>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
-          <label className="label">Link de archivo (opcional)</label>
-          <input
-            type="text"
-            name="archivos"
-            className="input"
-            value={formularioProyecto.archivos}
-            onChange={onChangeProyecto}
-            placeholder="https://..."
-          />
-
-          <label className="label">O subir archivo</label>
-          <input type="file" onChange={manejarArchivo} className="input" />
-          {formularioProyecto.archivoNombre && <p>📎 {formularioProyecto.archivoNombre}</p>}
-
-          <label className="label">Link de Meet (opcional)</label>
-          <input
-            type="text"
-            name="linkMeet"
-            className="input"
-            value={formularioProyecto.linkMeet}
-            onChange={onChangeProyecto}
-            placeholder="https://meet.google.com/xxx-xxxx-xxx"
-          />
-
-          <div className="barra-superior" style={{ gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              onClick={guardarProyecto}
-              disabled={!clienteTieneReservaConfirmada(formularioProyecto.cliente)}
-            >
-              {editId ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}
-            </button>
-            {editId && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => {
-                  setFormularioProyecto({
-                    cliente: "",
-                    fechaInicio: "",
-                    fechaFin: "",
-                    responsables: [],
-                    archivos: "",
-                    archivoData: "",
-                    archivoNombre: "",
-                    linkMeet: "",
-                  });
-                  setEditId(null);
-                }}
-              >
-                ❌ Cancelar edición
-              </button>
+            {!clienteTieneReservaConfirmada(formularioProyecto.cliente) && (
+              <p className="texto-bloqueado">⚠ Requiere reserva confirmada</p>
             )}
-          </div>
+          </section>
+        )}
 
-          {!clienteTieneReservaConfirmada(formularioProyecto.cliente) && (
-            <p className="texto-bloqueado">⚠ Requiere reserva confirmada</p>
-          )}
-        </section>
-      )}
-
-      {/* TAB: PROYECTOS */}
-      {tab === "Proyectos" && (
-        <section>
-          {proyectos.length === 0 ? (
-            <div className="tarjeta vacio">Sin proyectos cargados.</div>
-          ) : (
-            proyectos.map((p, i) => (
-              <div key={`proy-${p.id}-${i}`} className="tarjeta fila-proyecto">
-                <div className="proy-info">
-                  <div className="proy-titulo">
-                    <strong>{p.nombreProyecto || "(Proyecto sin nombre)"}</strong>
-                    <span className="chip">{p.cliente}</span>
-                  </div>
-                  <div className="proy-detalles">
-                    <span>📅 {new Date(p.fechaInicio).toLocaleDateString()} → {new Date(p.fechaFin).toLocaleDateString()}</span>
-                    <span>👥 {p.responsables?.join(", ")}</span>
-                  </div>
-                  {p.archivos && (
-                    <div>
-                      <a href={p.archivos} target="_blank" rel="noreferrer" className="link">
-                        📎 Ver archivo
-                      </a>
+        {/* TAB: PROYECTOS */}
+        {tab === "Proyectos" && (
+          <section>
+            {proyectos.length === 0 ? (
+              <div className="tarjeta vacio">Sin proyectos cargados.</div>
+            ) : (
+              proyectos.map((p, i) => (
+                <div key={`proy-${p.id}-${i}`} className="tarjeta fila-proyecto">
+                  <div className="proy-info">
+                    <div className="proy-titulo">
+                      <strong>{p.nombreProyecto || "(Proyecto sin nombre)"}</strong>
+                      <span className="chip">{p.cliente}</span>
                     </div>
-                  )}
-                  {p.archivoNombre && <div>📄 {p.archivoNombre}</div>}
-                  {p.linkMeet && (
-                    <div>
-                      <a href={p.linkMeet} target="_blank" rel="noreferrer" className="link">
-                        🎥 Meet
-                      </a>
+                    <div className="proy-detalles">
+                      <span>📅 {new Date(p.fechaInicio).toLocaleDateString()} → {new Date(p.fechaFin).toLocaleDateString()}</span>
+                      <span>👥 {p.responsables?.join(", ")}</span>
                     </div>
-                  )}
+                    {p.archivos && (
+                      <div>
+                        <a href={p.archivos} target="_blank" rel="noreferrer" className="link">
+                          📎 Ver archivo
+                        </a>
+                      </div>
+                    )}
+                    {p.archivoNombre && <div>📄 {p.archivoNombre}</div>}
+                    {p.linkMeet && (
+                      <div>
+                        <a href={p.linkMeet} target="_blank" rel="noreferrer" className="link">
+                          🎥 Meet
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="proy-acciones">
+                    <button className="btn btn-primary" onClick={() => editarProyecto(p)}>✏️ Editar</button>
+                    <button className="btn btn-danger" onClick={() => eliminarProyecto(p.id)}>🗑️ Eliminar</button>
+                  </div>
                 </div>
-                <div className="proy-acciones">
-                  <button className="btn btn-primary" onClick={() => editarProyecto(p)}>✏️ Editar</button>
-                  <button className="btn btn-danger" onClick={() => eliminarProyecto(p.id)}>🗑️ Eliminar</button>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      )}
+              ))
+            )}
+          </section>
+        )}
+      </div>
 
       <ToastContainer position="bottom-center" autoClose={2500} hideProgressBar />
     </div>

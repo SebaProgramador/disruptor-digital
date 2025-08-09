@@ -1,23 +1,34 @@
-// firebase.js
+// src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInAnonymously } from "firebase/auth";
 
+// ⚙️ Config del proyecto NUEVO (usa exactamente lo que da la consola)
 const firebaseConfig = {
-  apiKey: "AIzaSyDYqv1V9Wvph-L6n9AZ5ggoMKZ_Ly92k74",
-  authDomain: "disruptor-digital-368e6.firebaseapp.com",
-  projectId: "disruptor-digital-368e6",
-  storageBucket: "disruptor-digital-368e6.appspot.com",
-  messagingSenderId: "736597173070",
-  appId: "1:736597173070:web:1a4bc15de29ea97cff341f",
+  apiKey: "AIzaSyCxYXUZegxjs_qivThmyoZDPZZlyKmYw1U",
+  authDomain: "disruptor-digital-5909a.firebaseapp.com",
+  projectId: "disruptor-digital-5909a",
+  storageBucket: "disruptor-digital-5909a.firebasestorage.app",
+  messagingSenderId: "97847727673",
+  appId: "1:97847727673:web:285eb383a4f7467ab41fe8",
 };
 
 const app = initializeApp(firebaseConfig);
+
+// 🔥 Firestore y Auth
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// 🔐 login anónimo para que Firestore permita leer/escribir
-signInAnonymously(auth).catch((e) => console.error("anon auth error:", e));
-
-// (opcional) ver en consola si estás autenticado
-onAuthStateChanged(auth, (u) => console.log("Auth listo:", !!u));
+/**
+ * Login anónimo OPCIONAL (no rompe si está deshabilitado).
+ * En producción NO loguea el warning para que el cliente no vea ruido.
+ */
+(async () => {
+  try {
+    await signInAnonymously(auth);
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Anon auth opcional:", e?.code || e?.message);
+    }
+  }
+})();

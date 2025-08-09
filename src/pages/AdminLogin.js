@@ -240,9 +240,6 @@ export default function AdminLogin() {
           ⬅️ Volver al Inicio
         </button>
 
-        <div style={estilos.nota}>
-          En el sitio publicado debes iniciar sesión de nuevo (el <b>localStorage</b> de <b>localhost</b> no se comparte con <b>disruptordigital.cl</b>).
-        </div>
       </div>
     </div>
   );
