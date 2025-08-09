@@ -1,17 +1,27 @@
 // src/firebase.js
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDYqv1V9Wvph-L6n9AZ5ggoMKZ_Ly92k74",
-  authDomain: "disruptor-digital-368e6.firebaseapp.com",
-  projectId: "disruptor-digital-368e6",
-  storageBucket: "disruptor-digital-368e6.appspot.com",
-  messagingSenderId: "736597173070",
-  appId: "1:736597173070:web:1a4bc15de29ea97cff341f",
+  apiKey: "AIzaSyCxYXUZegxjs_qivThmyoZDPZZlyKmYw1U",
+  authDomain: "disruptor-digital-5909a.firebaseapp.com",
+  projectId: "disruptor-digital-5909a",
+  storageBucket: "disruptor-digital-5909a.firebasestorage.app",
+  messagingSenderId: "97847727673",
+  appId: "1:97847727673:web:285eb383a4f7467ab41fe8",
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app); // ← IMPORTANTE
+// Evita doble inicialización en hot-reload
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export { db };
+// Exports únicos, sin default
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+// Debug opcional (puedes borrar)
+if (typeof window !== "undefined") {
+  console.log("Firebase listo:", app.options.projectId);
+}

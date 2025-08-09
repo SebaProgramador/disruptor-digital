@@ -13,36 +13,61 @@ import HistorialReservas from "./pages/HistorialReservas";
 import GerentePanel from "./pages/GerentePanel";
 import GerenteLogin from "./pages/GerenteLogin";
 
+import PrivateRouteAdmin from "./routes/PrivateRouteAdmin";
+import PrivateRouteGerente from "./routes/PrivateRouteGerente";
+
 function App() {
   return (
     <Router>
       <Routes>
+        {/* públicas */}
         <Route path="/" element={<Inicio />} />
         <Route path="/politicas" element={<Politicas />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/reservar" element={<ReservaAsesoria />} />
-        <Route path="/lista-reservas" element={<ListaReservas />} />
+
+        {/* auth admin */}
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route
           path="/admin-panel"
           element={
-            localStorage.getItem("adminLogged") === "true" ? (
+            <PrivateRouteAdmin>
               <AdminPanel />
-            ) : (
-              <AdminLogin />
-            )
+            </PrivateRouteAdmin>
           }
         />
-        <Route path="/lista-proyectos" element={<ListaProyectos />} />
-        <Route path="/historial-reservas" element={<HistorialReservas />} />
+        <Route
+          path="/lista-reservas"
+          element={
+            <PrivateRouteAdmin>
+              <ListaReservas />
+            </PrivateRouteAdmin>
+          }
+        />
+        <Route
+          path="/lista-proyectos"
+          element={
+            <PrivateRouteAdmin>
+              <ListaProyectos />
+            </PrivateRouteAdmin>
+          }
+        />
+        <Route
+          path="/historial-reservas"
+          element={
+            <PrivateRouteAdmin>
+              <HistorialReservas />
+            </PrivateRouteAdmin>
+          }
+        />
+
+        {/* auth gerente */}
         <Route path="/gerente-login" element={<GerenteLogin />} />
         <Route
           path="/gerente-panel"
           element={
-            localStorage.getItem("gerenteLogged") === "true" ? (
+            <PrivateRouteGerente>
               <GerentePanel />
-            ) : (
-              <GerenteLogin />
-            )
+            </PrivateRouteGerente>
           }
         />
       </Routes>

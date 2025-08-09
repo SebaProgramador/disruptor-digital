@@ -275,3 +275,344 @@
     gap: 10px;
   }
 }
+
+
+/* === Botones reutilizables (skin dorado/negro) === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .7rem 1rem;
+  border-radius: .75rem;
+  border: 1px solid rgba(212,175,79,.25);
+  background: linear-gradient(180deg, #2b2b2b, #1c1c1c);
+  color: #f6e7c6;
+  font-weight: 700;
+  letter-spacing: .2px;
+  box-shadow: 0 6px 16px rgba(168,133,79,.25), inset 0 1px 0 rgba(255,255,255,.06);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(168,133,79,.32), inset 0 1px 0 rgba(255,255,255,.08); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .7; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #d4af37, #b68f2c);
+  color: #121212;
+  border-color: #e8c766;
+}
+.btn-primary:hover { background: linear-gradient(180deg, #e1bf4a, #c69a2f); }
+
+.btn-danger {
+  background: linear-gradient(180deg, #ff5a5f, #d64147);
+  border-color: rgba(255,90,95,.5);
+  color: #fff;
+}
+.btn-danger:hover { background: linear-gradient(180deg, #ff6e73, #e24b52); }
+
+.btn-ghost {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+  color: #e7d9b9;
+}
+.btn-ghost:hover { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.2); }
+
+/* Badges de estado */
+.badge {
+  display: inline-block;
+  padding: .25rem .6rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,.15);
+}
+.badge--ok { background: rgba(0,255,153,.12); color:#00ff99; }
+.badge--del { background: rgba(255,77,77,.12); color:#ff4d4d; }
+
+/* ======== Fondo y tipografía ======== */
+.fondo-admin {
+  background-color: #000;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #d4af37;
+  padding-bottom: 50px;
+}
+
+/* ======== Barra superior ======== */
+.barra-superior {
+  background: rgba(20, 20, 20, 0.95);
+  border-bottom: 2px solid #d4af37;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.4);
+}
+
+.barra-superior .chip-info {
+  background: #d4af37;
+  color: #121212;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+/* ======== Botones ======== */
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: #d4af37;
+  color: #121212;
+}
+
+.btn-primary:hover {
+  background: #f0d67a;
+}
+
+.btn-danger {
+  background: #a52a2a;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #ff4d4d;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #d4af37;
+  border: 2px solid #d4af37;
+}
+
+.btn-ghost:hover {
+  background: rgba(212, 175, 55, 0.2);
+}
+
+/* ======== Tabs ======== */
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #d4af37;
+  margin-top: 15px;
+  padding: 0 15px;
+}
+
+.tab-btn {
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  color: #d4af37;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.tab-btn.active {
+  background: #d4af37;
+  color: #121212;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+}
+
+/* ======== Tarjetas resumen (KPIs) ======== */
+.resumen-panel {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 15px;
+}
+
+.tarjeta-resumen {
+  flex: 1;
+  background: #1a1a1a;
+  border: 2px solid #d4af37;
+  padding: 20px;
+  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.tarjeta-resumen h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.tarjeta-resumen p {
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+/* ======== Tarjetas generales ======== */
+.tarjeta {
+  background: #1a1a1a;
+  border: 2px solid #d4af37;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 15px;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.tarjeta.vacio {
+  text-align: center;
+  color: #aaa;
+}
+
+/* ======== Reservas / Proyectos fila ======== */
+.fila-reserva,
+.fila-proyecto {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reserva-info,
+.proy-info {
+  flex: 1;
+  min-width: 250px;
+}
+
+.reserva-nombre,
+.proy-titulo {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.reserva-detalles,
+.reserva-fecha,
+.proy-detalles {
+  font-size: 0.9rem;
+  color: #ccc;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reserva-acciones,
+.proy-acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ======== Chips ======== */
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-left: 8px;
+  font-size: 0.75rem;
+  background: #333;
+  border-radius: 8px;
+  border: 1px solid #d4af37;
+}
+
+.chip-ok {
+  background: #28a745;
+  color: #fff;
+}
+
+/* ======== Formularios ======== */
+.label {
+  font-weight: bold;
+  margin-top: 10px;
+  display: block;
+}
+
+.input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px solid #d4af37;
+  background: #121212;
+  color: #fff;
+  margin-top: 5px;
+}
+
+.input-compact {
+  padding: 5px 8px;
+  font-size: 0.9rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #f0d67a;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.calendario {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px solid #d4af37;
+  background: #121212;
+  color: #fff;
+}
+
+/* ======== Chips toggle ======== */
+.chip-toggle {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #333;
+  border: 2px solid #d4af37;
+  color: #d4af37;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin: 5px;
+}
+
+.chip-toggle.on {
+  background: #d4af37;
+  color: #121212;
+}
+
+/* ======== Links ======== */
+.link {
+  color: #d4af37;
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: #f0d67a;
+}
+
+/* ======== Mensaje bloqueado ======== */
+.texto-bloqueado {
+  font-size: 0.85rem;
+  color: #ff4d4d;
+  margin-top: 8px;
+}
+
+/* ======== Responsive ======== */
+@media (max-width: 768px) {
+  .resumen-panel {
+    flex-direction: column;
+  }
+  .fila-reserva,
+  .fila-proyecto {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .reserva-acciones,
+  .proy-acciones {
+    justify-content: flex-start;
+  }
+}

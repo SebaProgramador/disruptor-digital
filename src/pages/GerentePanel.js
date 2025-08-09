@@ -13,6 +13,13 @@ export default function GerentePanel() {
   const [cargaPorEmpleado, setCargaPorEmpleado] = useState([]);
 
   useEffect(() => {
+    // 🔒 Protección de ruta
+    const logged = localStorage.getItem("gerenteLogged");
+    if (logged !== "true") {
+      navigate("/gerente-login");
+      return;
+    }
+
     const unsubPendientes = onSnapshot(collection(db, "reservas"), (snapshot) => {
       setReservasPendientes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
@@ -33,8 +40,7 @@ export default function GerentePanel() {
         });
       });
       const cargaArray = Object.entries(carga).map(([empleado, cantidad]) => ({
-        empleado,
-        cantidad,
+        empleado, cantidad,
       }));
       setCargaPorEmpleado(cargaArray);
     });
@@ -44,7 +50,7 @@ export default function GerentePanel() {
       unsubConfirmadas();
       unsubProyectos();
     };
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="fondo-admin">
@@ -52,32 +58,26 @@ export default function GerentePanel() {
 
       {/* Botones de navegación */}
       <div className="barra-superior" style={{ flexWrap: "wrap", gap: "10px" }}>
-        <button
-          className="btn-volver"
-          style={{ flex: "1", minWidth: "200px" }}
-          onClick={() => navigate("/")}
-        >
+        <button className="btn btn-ghost" style={{ flex: "1", minWidth: "200px" }} onClick={() => navigate("/")}>
           🏠 Volver al Inicio
         </button>
-        <button
-          className="btn-accion"
-          style={{ flex: "1", minWidth: "200px" }}
-          onClick={() => navigate("/historial-reservas")}
-        >
+        <button className="btn btn-primary" style={{ flex: "1", minWidth: "200px" }} onClick={() => navigate("/historial-reservas")}>
           📜 Ver Historial de Reservas
+        </button>
+        <button
+          className="btn btn-danger"
+          style={{ flex: "1", minWidth: "200px" }}
+          onClick={() => {
+            localStorage.removeItem("gerenteLogged");
+            navigate("/gerente-login");
+          }}
+        >
+          🚪 Cerrar sesión
         </button>
       </div>
 
       {/* Resumen rápido */}
-      <div
-        className="resumen-panel"
-        style={{
-          display: "flex",
-          gap: "15px",
-          marginTop: "20px",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="resumen-panel" style={{ display: "flex", gap: "15px", marginTop: "20px", flexWrap: "wrap" }}>
         <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}>
           <h3 style={{ color: "#ffcc00" }}>📋 Pendientes</h3>
           <p>{reservasPendientes.length}</p>
@@ -99,12 +99,8 @@ export default function GerentePanel() {
       ) : (
         cargaPorEmpleado.map((empleado) => (
           <div className="tarjeta" key={empleado.empleado}>
-            <p>
-              <strong>Empleado:</strong> {empleado.empleado}
-            </p>
-            <p>
-              <strong>Proyectos asignados:</strong> {empleado.cantidad}
-            </p>
+            <p><strong>Empleado:</strong> {empleado.empleado}</p>
+            <p><strong>Proyectos asignados:</strong> {empleado.cantidad}</p>
           </div>
         ))
       )}

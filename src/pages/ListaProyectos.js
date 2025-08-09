@@ -33,38 +33,26 @@ export default function ListaProyectos() {
   const [editandoId, setEditandoId] = useState(null);
   const posiblesResponsables = ["Nicolás", "Eliana", "Sebastián"];
 
-  useEffect(() => {
-    obtenerProyectos();
-  }, []);
+  useEffect(() => { obtenerProyectos(); }, []);
 
   const obtenerProyectos = async () => {
     try {
       const snapshot = await getDocs(collection(db, "proyectos"));
-      const datos = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const datos = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
       setProyectos(datos);
     } catch (error) {
       toast.error("❌ Error al cargar los proyectos.");
     }
   };
 
-  const manejarCambio = (e) => {
-    setFormulario({ ...formulario, [e.target.name]: e.target.value });
-  };
+  const manejarCambio = (e) => setFormulario({ ...formulario, [e.target.name]: e.target.value });
 
   const manejarArchivo = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        setFormulario((prev) => ({
-          ...prev,
-          archivoData: reader.result,
-          archivoNombre: file.name,
-          archivos: "",
-        }));
+        setFormulario((prev) => ({ ...prev, archivoData: reader.result, archivoNombre: file.name, archivos: "" }));
       };
       reader.readAsDataURL(file);
     }
@@ -96,13 +84,7 @@ export default function ListaProyectos() {
     e.preventDefault();
     const f = formulario;
 
-    if (
-      !f.cliente.trim() ||
-      !f.fechaInicio ||
-      !f.fechaFin ||
-      f.responsables.length === 0 ||
-      (!f.archivos.trim() && !f.archivoData)
-    ) {
+    if (!f.cliente.trim() || !f.fechaInicio || !f.fechaFin || f.responsables.length === 0 || (!f.archivos.trim() && !f.archivoData)) {
       toast.warn("⚠️ Completa todos los campos obligatorios.");
       return;
     }
@@ -145,72 +127,42 @@ export default function ListaProyectos() {
       <h2 className="titulo">📂 Proyectos Subidos</h2>
 
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <button
-          onClick={() => navigate("/admin-panel")}
-          className="btn-volver"
-          style={{ padding: "10px 20px", fontSize: "1rem" }}
-        >
+        <button onClick={() => navigate("/admin-panel")} className="btn btn-ghost" style={{ padding: "10px 20px", fontSize: "1rem" }}>
           ⬅️ Volver al Panel
         </button>
       </div>
 
       <form onSubmit={guardarProyecto} className="tarjeta">
-        <h3 className="subtitulo">
-          {editandoId ? "✏️ Editar Proyecto" : "📤 Subir Proyecto"}
-        </h3>
+        <h3 className="subtitulo">{editandoId ? "✏️ Editar Proyecto" : "📤 Subir Proyecto"}</h3>
 
         <label className="label">Nombre del cliente</label>
-        <input
-          type="text"
-          name="cliente"
-          className="input"
-          value={formulario.cliente}
-          onChange={manejarCambio}
-        />
+        <input type="text" name="cliente" className="input" value={formulario.cliente} onChange={manejarCambio} />
 
         <label className="label">Desde</label>
         <DatePicker
-          selected={
-            formulario.fechaInicio ? new Date(formulario.fechaInicio) : null
-          }
-          onChange={(date) =>
-            setFormulario({ ...formulario, fechaInicio: date.toISOString() })
-          }
-          dateFormat="yyyy-MM-dd"
-          locale={es}
-          className="calendario"
-          placeholderText="Selecciona una fecha"
+          selected={formulario.fechaInicio ? new Date(formulario.fechaInicio) : null}
+          onChange={(date) => setFormulario({ ...formulario, fechaInicio: date.toISOString() })}
+          dateFormat="yyyy-MM-dd" locale={es} className="calendario" placeholderText="Selecciona una fecha"
         />
 
         <label className="label">Hasta</label>
         <DatePicker
-          selected={
-            formulario.fechaFin ? new Date(formulario.fechaFin) : null
-          }
-          onChange={(date) =>
-            setFormulario({ ...formulario, fechaFin: date.toISOString() })
-          }
-          dateFormat="yyyy-MM-dd"
-          locale={es}
-          className="calendario"
-          placeholderText="Selecciona una fecha"
+          selected={formulario.fechaFin ? new Date(formulario.fechaFin) : null}
+          onChange={(date) => setFormulario({ ...formulario, fechaFin: date.toISOString() })}
+          dateFormat="yyyy-MM-dd" locale={es} className="calendario" placeholderText="Selecciona una fecha"
         />
 
         <label className="label">Responsables</label>
-        <div className="contenedor-responsables">
+        <div className="contenedor-responsables" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {posiblesResponsables.map((nombre) => (
             <button
               key={nombre}
               type="button"
-              className="btn-responsable"
+              className="btn btn-ghost"
               onClick={() => toggleResponsable(nombre)}
               style={{
-                backgroundColor: formulario.responsables.includes(nombre)
-                  ? "#d4af37"
-                  : "#333",
-                color: formulario.responsables.includes(nombre)
-                  ? "#000"
-                  : "#d4af37",
+                backgroundColor: formulario.responsables.includes(nombre) ? "#d4af37" : "",
+                color: formulario.responsables.includes(nombre) ? "#000" : "",
               }}
             >
               {nombre}
@@ -219,13 +171,7 @@ export default function ListaProyectos() {
         </div>
 
         <label className="label">Link archivo (opcional)</label>
-        <input
-          type="text"
-          name="archivos"
-          className="input"
-          value={formulario.archivos}
-          onChange={manejarCambio}
-        />
+        <input type="text" name="archivos" className="input" value={formulario.archivos} onChange={manejarCambio} />
 
         <label className="label">O subir archivo:</label>
         <input type="file" onChange={manejarArchivo} className="input" />
@@ -236,24 +182,14 @@ export default function ListaProyectos() {
         )}
 
         <label className="label">Link Meet (opcional)</label>
-        <input
-          type="text"
-          name="linkMeet"
-          className="input"
-          value={formulario.linkMeet}
-          onChange={manejarCambio}
-        />
+        <input type="text" name="linkMeet" className="input" value={formulario.linkMeet} onChange={manejarCambio} />
 
-        <div className="barra-superior">
-          <button type="submit" className="btn-accion">
+        <div className="barra-superior" style={{ gap: 8, flexWrap: "wrap" }}>
+          <button type="submit" className="btn btn-primary">
             {editandoId ? "💾 Actualizar" : "📤 Subir"}
           </button>
           {editandoId && (
-            <button
-              type="button"
-              className="btn-cancelar"
-              onClick={limpiarFormulario}
-            >
+            <button type="button" className="btn btn-ghost" onClick={limpiarFormulario}>
               ❌ Cancelar
             </button>
           )}
@@ -265,35 +201,17 @@ export default function ListaProyectos() {
           <p><strong>👤 Cliente:</strong> {proy.cliente}</p>
           <p><strong>📅 Desde:</strong> {new Date(proy.fechaInicio).toLocaleDateString()}</p>
           <p><strong>📅 Hasta:</strong> {new Date(proy.fechaFin).toLocaleDateString()}</p>
-          {proy.responsables?.length > 0 && (
-            <p><strong>👥 Responsables:</strong> {proy.responsables.join(", ")}</p>
-          )}
+          {proy.responsables?.length > 0 && (<p><strong>👥 Responsables:</strong> {proy.responsables.join(", ")}</p>)}
           {proy.archivos && (
-            <p>
-              <strong>📎 Link archivo:</strong>{" "}
-              <a href={proy.archivos} target="_blank" rel="noreferrer">
-                Ver archivo
-              </a>
-            </p>
+            <p><strong>📎 Link archivo:</strong> <a href={proy.archivos} target="_blank" rel="noreferrer">Ver archivo</a></p>
           )}
-          {proy.archivoNombre && (
-            <p><strong>📂 Archivo subido:</strong> {proy.archivoNombre}</p>
-          )}
+          {proy.archivoNombre && (<p><strong>📂 Archivo subido:</strong> {proy.archivoNombre}</p>)}
           {proy.linkMeet && (
-            <p>
-              <strong>🎥 Link Meet:</strong>{" "}
-              <a href={proy.linkMeet} target="_blank" rel="noreferrer">
-                {proy.linkMeet}
-              </a>
-            </p>
+            <p><strong>🎥 Link Meet:</strong> <a href={proy.linkMeet} target="_blank" rel="noreferrer">{proy.linkMeet}</a></p>
           )}
-          <div className="barra-superior">
-            <button className="btn-accion" onClick={() => cargarParaEditar(proy)}>
-              ✏️ Editar
-            </button>
-            <button className="btn-eliminar" onClick={() => eliminarProyecto(proy.id)}>
-              🗑️ Eliminar
-            </button>
+          <div className="barra-superior" style={{ gap: 8, flexWrap: "wrap" }}>
+            <button className="btn btn-primary" onClick={() => cargarParaEditar(proy)}>✏️ Editar</button>
+            <button className="btn btn-danger" onClick={() => eliminarProyecto(proy.id)}>🗑️ Eliminar</button>
           </div>
         </div>
       ))}

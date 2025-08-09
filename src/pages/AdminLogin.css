@@ -97,3 +97,61 @@
   position: absolute;
   left: -9999px;
 }
+
+
+/* === Botones reutilizables (skin dorado/negro) === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .7rem 1rem;
+  border-radius: .75rem;
+  border: 1px solid rgba(212,175,79,.25);
+  background: linear-gradient(180deg, #2b2b2b, #1c1c1c);
+  color: #f6e7c6;
+  font-weight: 700;
+  letter-spacing: .2px;
+  box-shadow: 0 6px 16px rgba(168,133,79,.25), inset 0 1px 0 rgba(255,255,255,.06);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(168,133,79,.32), inset 0 1px 0 rgba(255,255,255,.08); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .7; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #d4af37, #b68f2c);
+  color: #121212;
+  border-color: #e8c766;
+}
+.btn-primary:hover { background: linear-gradient(180deg, #e1bf4a, #c69a2f); }
+
+.btn-danger {
+  background: linear-gradient(180deg, #ff5a5f, #d64147);
+  border-color: rgba(255,90,95,.5);
+  color: #fff;
+}
+.btn-danger:hover { background: linear-gradient(180deg, #ff6e73, #e24b52); }
+
+.btn-ghost {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+  color: #e7d9b9;
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.2);
+}
+
+/* Badges de estado */
+.badge {
+  display: inline-block;
+  padding: .25rem .6rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,.15);
+}
+.badge--ok { background: rgba(0,255,153,.12); color:#00ff99; }
+.badge--del { background: rgba(255,77,77,.12); color:#ff4d4d; }

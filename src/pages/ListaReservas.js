@@ -19,15 +19,8 @@ const estilos = {
     minHeight: "100vh",
     fontFamily: "'Segoe UI', sans-serif",
   },
-  tablaResponsive: {
-    overflowX: "auto",
-  },
-  tabla: {
-    width: "100%",
-    borderCollapse: "collapse",
-    marginTop: 30,
-    minWidth: 750,
-  },
+  tablaResponsive: { overflowX: "auto" },
+  tabla: { width: "100%", borderCollapse: "collapse", marginTop: 30, minWidth: 750 },
   th: {
     backgroundColor: "#1a1a1a",
     color: "#d4af50",
@@ -55,17 +48,6 @@ const estilos = {
     gap: 10,
     flexWrap: "wrap",
   },
-  botonEliminar: {
-    backgroundColor: "#a83232",
-    color: "white",
-    border: "none",
-    padding: "6px 10px",
-    borderRadius: 6,
-    cursor: "pointer",
-    boxShadow: "0 0 8px rgba(255, 0, 0, 0.5)",
-    fontWeight: "bold",
-    fontSize: "0.85rem",
-  },
   filtros: {
     display: "flex",
     justifyContent: "center",
@@ -83,13 +65,6 @@ const estilos = {
     boxShadow: "0 0 8px #a8854f55",
     minWidth: 180,
   },
-  contador: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: "1.1rem",
-    color: "#ffde9f",
-    textShadow: "0 0 6px #b88c50aa",
-  },
 };
 
 export default function ListaReservas() {
@@ -102,8 +77,7 @@ export default function ListaReservas() {
       const datos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setReservas(datos);
     });
-
-    return () => unsub(); // se desconecta al desmontar
+    return () => unsub();
   }, []);
 
   const eliminarReserva = async (id) => {
@@ -120,9 +94,7 @@ export default function ListaReservas() {
 
   return (
     <div style={estilos.contenedor}>
-      <h2 style={estilos.titulo}>
-        <FaCalendarAlt /> Lista de Reservas
-      </h2>
+      <h2 style={estilos.titulo}><FaCalendarAlt /> Lista de Reservas</h2>
 
       <div style={estilos.filtros}>
         <input
@@ -140,7 +112,7 @@ export default function ListaReservas() {
         />
       </div>
 
-      <p style={estilos.contador}>
+      <p style={{ textAlign: "center", marginTop: 20, fontSize: "1.1rem", color: "#ffde9f" }}>
         Total: {reservasFiltradas.length} reserva{reservasFiltradas.length !== 1 && "s"} encontradas
       </p>
 
@@ -160,23 +132,14 @@ export default function ListaReservas() {
           <tbody>
             {reservasFiltradas.map((r) => (
               <tr key={r.id}>
-                <td style={estilos.td}>
-                  <FaUserAlt /> {r.nombre}
-                </td>
-                <td style={estilos.td}>
-                  <FaTag /> {r.nombreEmpresa}
-                </td>
+                <td style={estilos.td}><FaUserAlt /> {r.nombre}</td>
+                <td style={estilos.td}><FaTag /> {r.nombreEmpresa}</td>
                 <td style={estilos.td}>{r.dia}</td>
-                <td style={estilos.td}>
-                  <FaClock /> {r.horario}
-                </td>
+                <td style={estilos.td}><FaClock /> {r.horario}</td>
                 <td style={estilos.td}>{r.email}</td>
                 <td style={estilos.td}>{r.telefono}</td>
                 <td style={estilos.td}>
-                  <button
-                    style={estilos.botonEliminar}
-                    onClick={() => eliminarReserva(r.id)}
-                  >
+                  <button className="btn btn-danger" onClick={() => eliminarReserva(r.id)}>
                     <FaTrashAlt /> Eliminar
                   </button>
                 </td>

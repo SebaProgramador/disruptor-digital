@@ -4,48 +4,13 @@ import { FaWhatsapp } from "react-icons/fa";
 import estilos from "../estilos/inicioEstilos"; // Importamos los estilos separados
 
 const servicios = [
-  {
-    icono: "💡🔍",
-    titulo: "Estrategia de Redes Sociales",
-    texto:
-      "Desarrollamos un plan personalizado para aumentar tu visibilidad y conectar con tu público objetivo en redes sociales.",
-  },
-  {
-    icono: "📱💬",
-    titulo: "Gestión de Redes Sociales",
-    texto:
-      "Creamos contenido atractivo, respondemos a comentarios y mensajes, y monitoreamos tus métricas para maximizar tu presencia en línea.",
-  },
-  {
-    icono: "✏️📄",
-    titulo: "Creación de Contenido",
-    texto:
-      "Desarrollamos contenido de alta calidad y relevante para tu audiencia, incluyendo textos, imágenes, videos y más.",
-  },
-  {
-    icono: "🖌️📐",
-    titulo: "Creación de Logo",
-    texto:
-      "Diseñamos un logotipo único y memorable que refleje la esencia de tu marca.",
-  },
-  {
-    icono: "🚚📦",
-    titulo: "Logística",
-    texto:
-      "Optimizamos tus procesos internos y externos para garantizar que tu producto o servicio llegue a tus clientes de manera eficiente.",
-  },
-  {
-    icono: "✅💵",
-    titulo: "Estrategia de Cierre de Ventas",
-    texto:
-      "Plan personalizado para aumentar tus ventas, incluyendo gestión, capacitación y análisis para maximizar tus resultados.",
-  },
-  {
-    icono: "✅",
-    titulo: "Servicio Completo",
-    texto:
-      "Nos encargamos de la estrategia, contenido, diseño y logística para que puedas enfocarte en crecer y prosperar.",
-  },
+  { icono: "💡🔍", titulo: "Estrategia de Redes Sociales", texto: "Desarrollamos un plan personalizado para aumentar tu visibilidad y conectar con tu público objetivo en redes sociales." },
+  { icono: "📱💬", titulo: "Gestión de Redes Sociales", texto: "Creamos contenido atractivo, respondemos a comentarios y mensajes, y monitoreamos tus métricas para maximizar tu presencia en línea." },
+  { icono: "✏️📄", titulo: "Creación de Contenido", texto: "Desarrollamos contenido de alta calidad y relevante para tu audiencia, incluyendo textos, imágenes, videos y más." },
+  { icono: "🖌️📐", titulo: "Creación de Logo", texto: "Diseñamos un logotipo único y memorable que refleje la esencia de tu marca." },
+  { icono: "🚚📦", titulo: "Logística", texto: "Optimizamos tus procesos internos y externos para garantizar que tu producto o servicio llegue a tus clientes de manera eficiente." },
+  { icono: "✅💵", titulo: "Estrategia de Cierre de Ventas", texto: "Plan personalizado para aumentar tus ventas, incluyendo gestión, capacitación y análisis para maximizar tus resultados." },
+  { icono: "✅", titulo: "Servicio Completo", texto: "Nos encargamos de la estrategia, contenido, diseño y logística para que puedas enfocarte en crecer y prosperar." },
 ];
 
 export default function Inicio() {
@@ -59,18 +24,12 @@ export default function Inicio() {
       <div style={estilos.contenido}>
         {/* 👤 Presentación */}
         <section style={estilos.portada}>
-          <img
-            src="/portada-disruptor.jpg"
-            alt="Portada Disruptor Digital"
-            style={estilos.imagenPortada}
-          />
+          <img src="/portada-disruptor.jpg" alt="Portada Disruptor Digital" style={estilos.imagenPortada} />
           <p style={{ marginBottom: 12 }}>
             Asesoría en marketing con visión moderna y elegante. Mi misión es ayudarte a crear y ejecutar
             cualquier proyecto digital con ideas innovadoras, estrategias efectivas y una presencia que marque diferencia.
           </p>
-          <p>
-            Mi compromiso es dejar huella en cada uno de los emprendimientos que confíen en mis conocimientos.
-          </p>
+          <p>Mi compromiso es dejar huella en cada uno de los emprendimientos que confíen en mis conocimientos.</p>
         </section>
 
         {/* 🎯 Misión y Visión */}
@@ -92,12 +51,12 @@ export default function Inicio() {
               <article
                 key={i}
                 style={estilos.servicioCard}
-                onMouseEnter={e => {
+                onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-8px) scale(1.03)";
                   e.currentTarget.style.boxShadow =
                     "0 14px 38px rgba(184, 140, 80, 0.95), inset 0 0 20px 7px #d4af7f";
                 }}
-                onMouseLeave={e => {
+                onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "none";
                   e.currentTarget.style.boxShadow =
                     "0 10px 28px rgba(184, 140, 80, 0.9), inset 0 0 15px 5px #d4af7f";
@@ -151,6 +110,9 @@ export default function Inicio() {
             style={{
               ...estilos.boton,
               ...(hoverReservar ? estilos.botonHoverReservar : {}),
+              borderWidth: "2px",
+              borderStyle: "solid",
+              borderColor: "#d4af37",
             }}
             onMouseEnter={() => setHoverReservar(true)}
             onMouseLeave={() => setHoverReservar(false)}
@@ -163,6 +125,9 @@ export default function Inicio() {
             style={{
               ...estilos.boton,
               ...(hoverAdmin ? estilos.botonHoverReservar : {}),
+              borderWidth: "2px",
+              borderStyle: "solid",
+              borderColor: "#d4af37",
             }}
             onMouseEnter={() => setHoverAdmin(true)}
             onMouseLeave={() => setHoverAdmin(false)}

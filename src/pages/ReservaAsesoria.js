@@ -20,10 +20,24 @@ import {
   where,
   onSnapshot,
 } from "firebase/firestore";
+import emailjs from "@emailjs/browser";
 import estilos from "./ReservaAsesoriaEstilo";
 
 const FESTIVOS = ["2025-07-28", "2025-09-18", "2025-09-19"];
 const MAX_CUPOS_POR_DIA = 20;
+
+const SERVICIOS = [
+  "Diseño Web",
+  "Tienda Online",
+  "Branding",
+  "Publicidad",
+  "Mantenimiento Web",
+];
+
+// EmailJS (solo ADMIN)
+const EMAILJS_SERVICE_ID = "service_ajyjiwj";         // ✅ tu Service ID
+const EMAILJS_TEMPLATE_ID = "template_k6flmfv";       // ✅ tu Template ID
+const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";  // ⛳ pega tu Public Key de EmailJS
 
 const esFestivo = (fecha) => {
   const fechaStr = fecha.toISOString().split("T")[0];
@@ -90,6 +104,7 @@ export default function ReservaAsesoria() {
     horario: "09:00",
     nombreEmpresa: "",
     rubro: "",
+    servicioDeseado: "",
   });
 
   const [enviando, setEnviando] = useState(false);
@@ -120,6 +135,32 @@ export default function ReservaAsesoria() {
       setHorariosDisponibles(horarios);
     } else {
       setHorariosDisponibles([]);
+    }
+  };
+
+  const enviarEmailAdmin = async () => {
+    const templateParams = {
+      nombre: formulario.nombre,
+      email: formulario.email,
+      telefono: formulario.telefono,
+      tipoEmpresa: formulario.tipoEmpresa,
+      dia: formulario.dia,
+      horario: formulario.horario,
+      nombreEmpresa: formulario.nombreEmpresa,
+      rubro: formulario.rubro,
+      servicioDeseado: formulario.servicioDeseado,
+    };
+
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      );
+    } catch (e) {
+      console.error("Error al enviar email al admin:", e);
+      // No interrumpimos el flujo del usuario si falla el email
     }
   };
 
@@ -158,8 +199,21 @@ export default function ReservaAsesoria() {
         return;
       }
 
+      // 1) Guardar en Firebase
       await addDoc(collection(db, "reservas"), formulario);
 
+      // 2) Aviso por WhatsApp al cliente
+      window.open(
+        `https://wa.me/56955348010?text=${encodeURIComponent(
+          `Hola ${formulario.nombre}, recibimos tu reserva para el servicio de "${formulario.servicioDeseado}" el día ${formulario.dia} a las ${formulario.horario}. Te responderemos dentro de 24 horas. ¡Gracias por confiar en nosotros!`
+        )}`,
+        "_blank"
+      );
+
+      // 3) Aviso por Email SOLO al ADMIN
+      await enviarEmailAdmin();
+
+      // 4) Limpiar y feedback visual
       setFormulario({
         nombre: "",
         email: "",
@@ -169,6 +223,7 @@ export default function ReservaAsesoria() {
         horario: "09:00",
         nombreEmpresa: "",
         rubro: "",
+        servicioDeseado: "",
       });
 
       setExito(true);
@@ -189,7 +244,6 @@ export default function ReservaAsesoria() {
     <div style={estilos.fondo}>
       <div style={estilos.contenedor}>
         <div style={{ textAlign: "center", marginBottom: "25px" }}>
-          {/* LOGO MEJORADO */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
             <img
               src="/logo.jpg"
@@ -204,7 +258,6 @@ export default function ReservaAsesoria() {
               }}
             />
           </div>
-
           <h2 style={estilos.titulo}>
             <FaCalendarAlt style={{ color: "#d4af50" }} /> Reserva tu Asesoría
           </h2>
@@ -252,16 +305,11 @@ export default function ReservaAsesoria() {
           <select name="horario" value={formulario.horario} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito || horariosDisponibles.length === 0}>
             {horariosDisponibles.length === 0
               ? ["09:00", "10:00", "11:00"].map((hora) => (
-                  <option key={hora} value={hora} style={estilos.opcionDisponible}>{hora}</option>
+                  <option key={hora} value={hora}>{hora}</option>
                 ))
               : horariosDisponibles.map(({ hora, disponible }) => (
-                  <option
-                    key={hora}
-                    value={hora}
-                    disabled={!disponible}
-                    style={disponible ? estilos.opcionDisponible : estilos.opcionNoDisponible}
-                  >
-                    {hora} {disponible ? "" : `(No disponible)`}
+                  <option key={hora} value={hora} disabled={!disponible}>
+                    {hora} {disponible ? "" : "(No disponible)"}
                   </option>
                 ))}
           </select>
@@ -271,6 +319,21 @@ export default function ReservaAsesoria() {
 
           <label style={estilos.etiqueta}><FaFolderOpen /> Rubro:</label>
           <input name="rubro" value={formulario.rubro} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito} />
+
+          <label style={estilos.etiqueta}><FaTag /> Servicio que deseas:</label>
+          <select
+            name="servicioDeseado"
+            value={formulario.servicioDeseado}
+            onChange={manejarCambio}
+            required
+            style={estilos.input}
+            disabled={enviando || exito}
+          >
+            <option value="">Selecciona un servicio</option>
+            {SERVICIOS.map((servicio, i) => (
+              <option key={i} value={servicio}>{servicio}</option>
+            ))}
+          </select>
 
           <button type="submit" disabled={enviando || exito} style={{ ...estilos.boton, ...(enviando || exito ? estilos.botonDisabled : {}) }}>
             🚀 Reservar ahora

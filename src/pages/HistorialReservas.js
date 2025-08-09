@@ -24,24 +24,14 @@ export default function HistorialReservas() {
   }, []);
 
   const reservasFiltradas = historial.filter((reserva) => {
-    const nombreCoincide = reserva.nombre
-      ?.toLowerCase()
-      .includes(filtroNombre.toLowerCase());
-    const estadoCoincide =
-      filtroEstado === "todos" ? true : reserva.estado === filtroEstado;
+    const nombreCoincide = reserva.nombre?.toLowerCase().includes(filtroNombre.toLowerCase());
+    const estadoCoincide = filtroEstado === "todos" ? true : reserva.estado === filtroEstado;
     return nombreCoincide && estadoCoincide;
   });
 
   const totalConfirmadas = historial.filter((r) => r.estado === "confirmada").length;
   const totalEliminadas = historial.filter((r) => r.estado === "eliminada").length;
 
-  const getColorEstado = (estado) => {
-    if (estado === "confirmada") return { color: "#00ff99", fontWeight: "bold" };
-    if (estado === "eliminada") return { color: "#ff4d4d", fontWeight: "bold" };
-    return { color: "#d4af37", fontWeight: "bold" };
-  };
-
-  // Exportar a Excel
   const exportarExcel = () => {
     const datosExportar = reservasFiltradas.map((reserva) => ({
       Nombre: reserva.nombre,
@@ -60,49 +50,23 @@ export default function HistorialReservas() {
     XLSX.writeFile(wb, "Historial_Reservas.xlsx");
   };
 
-  // Exportar a PDF
   const exportarPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Historial de Reservas", 14, 15);
-
-    // Resumen
     doc.setFontSize(12);
     doc.text(`Total: ${historial.length}`, 14, 25);
     doc.text(`Confirmadas: ${totalConfirmadas}`, 14, 32);
     doc.text(`Eliminadas: ${totalEliminadas}`, 14, 39);
 
-    // Tabla
-    const columnas = [
-      "Nombre",
-      "Email",
-      "Teléfono",
-      "Empresa",
-      "Rubro",
-      "Día",
-      "Hora",
-      "Fecha registro",
-      "Estado",
-    ];
+    const columnas = ["Nombre","Email","Teléfono","Empresa","Rubro","Día","Hora","Fecha registro","Estado"];
     const filas = reservasFiltradas.map((reserva) => [
-      reserva.nombre,
-      reserva.email,
-      reserva.telefono,
-      reserva.nombreEmpresa,
-      reserva.rubro,
-      reserva.dia,
-      reserva.horario,
-      new Date(reserva.fechaRegistro).toLocaleString(),
-      reserva.estado,
+      reserva.nombre, reserva.email, reserva.telefono, reserva.nombreEmpresa,
+      reserva.rubro, reserva.dia, reserva.horario,
+      new Date(reserva.fechaRegistro).toLocaleString(), reserva.estado,
     ]);
 
-    doc.autoTable({
-      head: [columnas],
-      body: filas,
-      startY: 45,
-      styles: { fontSize: 8 },
-    });
-
+    doc.autoTable({ head: [columnas], body: filas, startY: 45, styles: { fontSize: 8 } });
     doc.save("Historial_Reservas.pdf");
   };
 
@@ -112,70 +76,29 @@ export default function HistorialReservas() {
 
       {/* Botones de navegación */}
       <div className="barra-superior" style={{ flexWrap: "wrap", gap: "10px" }}>
-        <button
-          className="btn-volver"
-          style={{ flex: "1", minWidth: "180px" }}
-          onClick={() => navigate("/admin-panel")}
-        >
+        <button className="btn btn-ghost" style={{ flex: "1", minWidth: "180px" }} onClick={() => navigate("/admin-panel")}>
           🔙 Volver al Panel
         </button>
-        <button
-          className="boton-ver-proyectos"
-          style={{ flex: "1", minWidth: "180px" }}
-          onClick={() => navigate("/")}
-        >
+        <button className="btn btn-ghost" style={{ flex: "1", minWidth: "180px" }} onClick={() => navigate("/")}>
           🏠 Ir al Inicio
         </button>
-        <button
-          className="btn-accion"
-          style={{ flex: "1", minWidth: "180px" }}
-          onClick={exportarExcel}
-        >
+        <button className="btn btn-primary" style={{ flex: "1", minWidth: "180px" }} onClick={exportarExcel}>
           📊 Exportar Excel
         </button>
-        <button
-          className="btn-accion"
-          style={{ flex: "1", minWidth: "180px" }}
-          onClick={exportarPDF}
-        >
+        <button className="btn btn-primary" style={{ flex: "1", minWidth: "180px" }} onClick={exportarPDF}>
           📄 Exportar PDF
         </button>
       </div>
 
       {/* Resumen de conteos */}
-      <div
-        className="resumen-panel"
-        style={{
-          display: "flex",
-          gap: "15px",
-          marginTop: "20px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}>
-          <h3>📋 Total</h3>
-          <p>{historial.length}</p>
-        </div>
-        <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}>
-          <h3 style={{ color: "#00ff99" }}>✅ Confirmadas</h3>
-          <p>{totalConfirmadas}</p>
-        </div>
-        <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}>
-          <h3 style={{ color: "#ff4d4d" }}>🗑️ Eliminadas</h3>
-          <p>{totalEliminadas}</p>
-        </div>
+      <div className="resumen-panel" style={{ display: "flex", gap: "15px", marginTop: "20px", flexWrap: "wrap" }}>
+        <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}><h3>📋 Total</h3><p>{historial.length}</p></div>
+        <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}><h3 style={{ color: "#00ff99" }}>✅ Confirmadas</h3><p>{totalConfirmadas}</p></div>
+        <div className="tarjeta-resumen" style={{ flex: "1", minWidth: "180px" }}><h3 style={{ color: "#ff4d4d" }}>🗑️ Eliminadas</h3><p>{totalEliminadas}</p></div>
       </div>
 
       {/* Filtros */}
-      <div
-        className="tarjeta"
-        style={{
-          marginTop: "20px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "10px",
-        }}
-      >
+      <div className="tarjeta" style={{ marginTop: "20px", display: "flex", flexWrap: "wrap", gap: "10px" }}>
         <input
           type="text"
           placeholder="🔍 Buscar por nombre"
@@ -202,33 +125,19 @@ export default function HistorialReservas() {
       ) : (
         reservasFiltradas.map((reserva) => (
           <div className="tarjeta" key={reserva.id} style={{ marginTop: "15px" }}>
+            <p><strong>👤 Nombre:</strong> {reserva.nombre}</p>
+            <p><strong>📧 Email:</strong> {reserva.email}</p>
+            <p><strong>📱 Teléfono:</strong> {reserva.telefono}</p>
+            <p><strong>🏢 Empresa:</strong> {reserva.nombreEmpresa}</p>
+            <p><strong>📂 Rubro:</strong> {reserva.rubro}</p>
+            <p><strong>🗓️ Día:</strong> {reserva.dia}</p>
+            <p><strong>⏰ Hora:</strong> {reserva.horario}</p>
+            <p><strong>📅 Fecha registro:</strong> {new Date(reserva.fechaRegistro).toLocaleString()}</p>
             <p>
-              <strong>👤 Nombre:</strong> {reserva.nombre}
-            </p>
-            <p>
-              <strong>📧 Email:</strong> {reserva.email}
-            </p>
-            <p>
-              <strong>📱 Teléfono:</strong> {reserva.telefono}
-            </p>
-            <p>
-              <strong>🏢 Empresa:</strong> {reserva.nombreEmpresa}
-            </p>
-            <p>
-              <strong>📂 Rubro:</strong> {reserva.rubro}
-            </p>
-            <p>
-              <strong>🗓️ Día:</strong> {reserva.dia}
-            </p>
-            <p>
-              <strong>⏰ Hora:</strong> {reserva.horario}
-            </p>
-            <p>
-              <strong>📅 Fecha registro:</strong>{" "}
-              {new Date(reserva.fechaRegistro).toLocaleString()}
-            </p>
-            <p style={getColorEstado(reserva.estado)}>
-              <strong>📌 Estado:</strong> {reserva.estado}
+              <strong>📌 Estado:</strong>{" "}
+              <span className={`badge ${reserva.estado === "confirmada" ? "badge--ok" : "badge--del"}`}>
+                {reserva.estado}
+              </span>
             </p>
           </div>
         ))
