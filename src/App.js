@@ -17,6 +17,9 @@ import GerentePanel from "./pages/GerentePanel";
 
 import PrivateRouteAdmin from "./routes/PrivateRouteAdmin";
 import PrivateRouteGerente from "./routes/PrivateRouteGerente";
+import PrivateRouteStaff from "./routes/PrivateRouteStaff";
+
+import ResetHistorial from "./pages/ResetHistorial";
 
 export default function App() {
   return (
@@ -25,6 +28,16 @@ export default function App() {
       <Route path="/" element={<Inicio />} />
       <Route path="/politicas" element={<Politicas />} />
       <Route path="/reservar" element={<ReservaAsesoria />} />
+
+      {/* Reset historial (protegida: admin o gerente) */}
+      <Route
+        path="/reset-historial"
+        element={
+          <PrivateRouteStaff>
+            <ResetHistorial />
+          </PrivateRouteStaff>
+        }
+      />
 
       {/* Auth Admin */}
       <Route path="/admin-login" element={<AdminLogin />} />

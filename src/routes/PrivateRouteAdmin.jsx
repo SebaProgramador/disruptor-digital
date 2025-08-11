@@ -1,52 +1,46 @@
 // src/routes/PrivateRouteAdmin.jsx
-import React, { useEffect, useRef, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
 
 export default function PrivateRouteAdmin({ children }) {
-  const location = useLocation();
   const [ready, setReady] = useState(false);
   const [ok, setOk] = useState(false);
-  const mountedRef = useRef(true);
 
   useEffect(() => {
-    mountedRef.current = true;
-
-    const evaluate = () => {
-      if (!mountedRef.current) return;
-      const flag =
-        typeof window !== "undefined" &&
-        localStorage.getItem("adminLogged") === "true";
-      setOk(!!flag);
-      setReady(true);
-    };
-
-    let unsubscribe = null;
+    let unsub = () => {};
     try {
-      if (auth && typeof onAuthStateChanged === "function") {
-        unsubscribe = onAuthStateChanged(auth, () => {
-          evaluate(); // esperamos init de Firebase y luego evaluamos flag local
-        });
-      } else {
-        evaluate();
-      }
-    } catch {
-      evaluate();
+      unsub = onAuthStateChanged(auth, (user) => {
+        const local = localStorage.getItem("adminLogged") === "true";
+        setOk(!!user || local); // Permite Firebase Auth o bandera localStorage
+        setReady(true);
+      });
+    } catch (e) {
+      const local = localStorage.getItem("adminLogged") === "true";
+      setOk(local);
+      setReady(true);
     }
-
-    const timeoutId = setTimeout(() => evaluate(), 800);
-
-    return () => {
-      mountedRef.current = false;
-      clearTimeout(timeoutId);
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
+    return () => unsub && unsub();
   }, []);
 
-  if (!ready) return null; // aquí podrías renderizar un spinner si quieres
+  if (!ready) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#d4af37",
+          background: "#000",
+          fontFamily: "'Segoe UI', sans-serif",
+        }}
+      >
+        Verificando acceso…
+      </div>
+    );
+  }
 
-  return ok
-    ? children
-    : <Navigate to="/admin-login" replace state={{ from: location }} />;
+  return ok ? children : <Navigate to="/admin-login" replace />;
 }

@@ -1,8 +1,17 @@
 // src/pages/GerentePanel.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  getDocs,
+  query,
+  limit,
+  doc,
+  deleteDoc,
+} from "firebase/firestore";
 import { db } from "../firebase";
+import { ensureAuth } from "../utils/ensureAuth";
 import "../styles/adminPanelEstilo-glass.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -33,40 +42,64 @@ export default function GerentePanel() {
   // PDF
   const printRef = useRef(null);
 
+  // Estado del borrado masivo
+  const [reseteando, setReseteando] = useState(false);
+
   useEffect(() => {
-    // 🔒 Protección de ruta
+    // 🔒 Protección de ruta (UI)
     const logged = localStorage.getItem("gerenteLogged");
     if (logged !== "true") {
       navigate("/gerente-login");
       return;
     }
 
-    const unsubPendientes = onSnapshot(collection(db, "reservas"), (snapshot) => {
-      setReservasPendientes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
+    let unsubPendientes = () => {};
+    let unsubConfirmadas = () => {};
+    let unsubProyectos = () => {};
 
-    const unsubConfirmadas = onSnapshot(collection(db, "reservasConfirmadas"), (snapshot) => {
-      setReservasConfirmadas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
+    (async () => {
+      try {
+        // 👇 Necesario para permisos Firestore
+        await ensureAuth();
 
-    const unsubProyectos = onSnapshot(collection(db, "proyectos"), (snapshot) => {
-      const listaProyectos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        unsubPendientes = onSnapshot(
+          collection(db, "reservas"),
+          (snapshot) => setReservasPendientes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))),
+          (err) => console.error("reservas listener:", err)
+        );
 
-      // Calcular carga por empleado
-      const carga = {};
-      listaProyectos.forEach((proy) => {
-        proy.responsables?.forEach((resp) => {
-          carga[resp] = (carga[resp] || 0) + 1;
-        });
-      });
-      const cargaArray = Object.entries(carga).map(([empleado, cantidad]) => ({ empleado, cantidad }));
-      setCargaPorEmpleado(cargaArray);
-    });
+        unsubConfirmadas = onSnapshot(
+          collection(db, "reservasConfirmadas"),
+          (snapshot) => setReservasConfirmadas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))),
+          (err) => console.error("confirmadas listener:", err)
+        );
+
+        unsubProyectos = onSnapshot(
+          collection(db, "proyectos"),
+          (snapshot) => {
+            const listaProyectos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            // Calcular carga por empleado
+            const carga = {};
+            listaProyectos.forEach((proy) => {
+              proy.responsables?.forEach((resp) => {
+                carga[resp] = (carga[resp] || 0) + 1;
+              });
+            });
+            const cargaArray = Object.entries(carga).map(([empleado, cantidad]) => ({ empleado, cantidad }));
+            setCargaPorEmpleado(cargaArray);
+          },
+          (err) => console.error("proyectos listener:", err)
+        );
+      } catch (e) {
+        console.error(e);
+        toast.error("No se pudo iniciar la sesión con Firebase.");
+      }
+    })();
 
     return () => {
-      unsubPendientes();
-      unsubConfirmadas();
-      unsubProyectos();
+      unsubPendientes?.();
+      unsubConfirmadas?.();
+      unsubProyectos?.();
     };
   }, [navigate]);
 
@@ -159,6 +192,45 @@ export default function GerentePanel() {
     }
   };
 
+  // 🗑️ Vaciar toda la colección 'reservasHistorial' (solo gerente)
+  const vaciarHistorial = async () => {
+    if (reseteando) return;
+    const confirm1 = window.confirm("⚠️ Esto eliminará TODO el historial. ¿Continuar?");
+    if (!confirm1) return;
+
+    const texto = window.prompt('Para confirmar escribe: ELIMINAR');
+    if (texto !== "ELIMINAR") {
+      toast.info("Operación cancelada");
+      return;
+    }
+
+    try {
+      setReseteando(true);
+      await ensureAuth();
+
+      const pageSize = 200; // borra en lotes
+      let total = 0;
+
+      while (true) {
+        const snap = await getDocs(query(collection(db, "reservasHistorial"), limit(pageSize)));
+        if (snap.empty) break;
+        await Promise.all(
+          snap.docs.map((d) => deleteDoc(doc(db, "reservasHistorial", d.id)))
+        );
+        total += snap.size;
+        // Si trajo menos que el límite, ya no quedan más docs
+        if (snap.size < pageSize) break;
+      }
+
+      toast.success(`Historial eliminado (${total} documentos)`);
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo vaciar el historial");
+    } finally {
+      setReseteando(false);
+    }
+  };
+
   return (
     <div className="fondo-admin">
       {/* TOP BAR */}
@@ -170,7 +242,18 @@ export default function GerentePanel() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
           <button className="btn btn-ghost" onClick={() => navigate("/admin-panel")}>⬅️ Volver a AdminPanel</button>
-          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historial</button>
+          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historico</button>
+
+          {/* 🔹 Reemplazamos la navegación por un botón real que borra el historial */}
+          <button
+            className="btn btn-ghost"
+            onClick={vaciarHistorial}
+            disabled={reseteando}
+            title="Borra por completo la colección 'reservasHistorial'"
+          >
+            {reseteando ? "⏳ Vaciando..." : "🗑️ Vaciar Historial"}
+          </button>
+
           <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF</button>
           <button
             className="btn btn-danger"
@@ -187,25 +270,24 @@ export default function GerentePanel() {
       {/* Contenido exportable */}
       <div ref={printRef}>
         {/* KPIs */}
-       <section className="resumen-panel" style={{ marginTop: 12 }}>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>📋 Pendientes</h3>
-    <p>{kpiPendientes}</p>
-  </div>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>✅ Confirmadas</h3>
-    <p>{kpiConfirmadas}</p>
-  </div>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>📅 Hoy</h3>
-    <p>{kpiHoy}</p>
-  </div>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>🗓️ Próx. 7 días</h3>
-    <p>{kpiSemana}</p>
-  </div>
-</section>
-
+        <section className="resumen-panel" style={{ marginTop: 12 }}>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>📋 Pendientes</h3>
+            <p>{kpiPendientes}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>✅ Confirmadas</h3>
+            <p>{kpiConfirmadas}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>📅 Hoy</h3>
+            <p>{kpiHoy}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>🗓️ Próx. 7 días</h3>
+            <p>{kpiSemana}</p>
+          </div>
+        </section>
 
         {/* TABS + BÚSQUEDA */}
         <nav className="tabs">

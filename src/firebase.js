@@ -19,21 +19,21 @@ const firebaseConfig = {
 
 // 1) App primero
 const app = initializeApp(firebaseConfig);
-export default app; // <- por si alguna vez necesitas solo la app
+export default app;
 
-// 2) Firestore exportado por nombre
+// 2) Firestore
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,  // ⬅️ forzado
   useFetchStreams: false,
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),
 });
 
-// 3) Auth exportado por nombre
+// 3) Auth
 export const auth = getAuth(app);
 
-// 4) Login anónimo opcional (no rompe si falla)
+// 4) Login anónimo opcional
 (async () => {
   try {
     await signInAnonymously(auth);

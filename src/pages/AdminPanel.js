@@ -16,7 +16,8 @@ import {
   doc,
   setDoc,
 } from "firebase/firestore";
-// ⛔️ OJO: ya NO importamos { db } aquí (lo cargamos en diferido)
+// db lo cargamos en diferido
+import { ensureAuth } from "../utils/ensureAuth";
 
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -74,26 +75,43 @@ export default function AdminPanel() {
   // ====== AUTH & SNAPSHOTS ======
   useEffect(() => {
     const logged = localStorage.getItem("adminLogged");
-    if (logged !== "true") navigate("/admin-login");
+    if (logged !== "true") {
+      navigate("/admin-login");
+      return;
+    }
 
     let unsubPend = () => {};
     let unsubConf = () => {};
     let unsubProy = () => {};
 
     (async () => {
-      // 👉 carga db después de montar (corta cualquier ciclo)
-      const { db } = await import("../firebase");
-      setDbRef(db);
+      try {
+        // 👇 Imprescindible para que Firestore permita leer
+        await ensureAuth();
 
-      unsubPend = onSnapshot(collection(db, "reservas"), (snap) =>
-        setReservas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      );
-      unsubConf = onSnapshot(collection(db, "reservasConfirmadas"), (snap) =>
-        setReservasConfirmadas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      );
-      unsubProy = onSnapshot(collection(db, "proyectos"), (snap) =>
-        setProyectos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      );
+        // 👉 carga db después de montar (corta cualquier ciclo)
+        const { db } = await import("../firebase");
+        setDbRef(db);
+
+        unsubPend = onSnapshot(
+          collection(db, "reservas"),
+          (snap) => setReservas(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+          (err) => console.error("reservas listener:", err)
+        );
+        unsubConf = onSnapshot(
+          collection(db, "reservasConfirmadas"),
+          (snap) => setReservasConfirmadas(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+          (err) => console.error("confirmadas listener:", err)
+        );
+        unsubProy = onSnapshot(
+          collection(db, "proyectos"),
+          (snap) => setProyectos(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+          (err) => console.error("proyectos listener:", err)
+        );
+      } catch (e) {
+        console.error(e);
+        toast.error("No se pudo iniciar la sesión con Firebase.");
+      }
     })();
 
     return () => {
@@ -106,6 +124,7 @@ export default function AdminPanel() {
   // ====== HELPERS ======
   const guardarEnHistorial = async (reserva, estado) => {
     if (!dbRef) return;
+    await ensureAuth();
     await addDoc(collection(dbRef, "reservasHistorial"), {
       ...reserva,
       estado,
@@ -128,6 +147,7 @@ export default function AdminPanel() {
 
   const confirmarReserva = async (reserva) => {
     if (!dbRef) return;
+    await ensureAuth();
     const r = { ...reserva, estado: "confirmada", fechaConfirmacion: new Date().toISOString() };
     try {
       await addDoc(collection(dbRef, "reservasConfirmadas"), r);
@@ -170,6 +190,7 @@ export default function AdminPanel() {
 
   const eliminarReservaPendiente = async (id) => {
     if (!dbRef) return;
+    await ensureAuth();
     const r = reservas.find((x) => x.id === id);
     if (!window.confirm("¿Eliminar esta reserva pendiente?")) return;
     try {
@@ -183,6 +204,7 @@ export default function AdminPanel() {
 
   const eliminarReservaConfirmada = async (id) => {
     if (!dbRef) return;
+    await ensureAuth();
     if (!window.confirm("¿Eliminar esta reserva confirmada?")) return;
     try {
       await deleteDoc(doc(dbRef, "reservasConfirmadas", id));
@@ -228,6 +250,7 @@ export default function AdminPanel() {
   const guardarProyecto = async (e) => {
     e.preventDefault();
     if (!dbRef) return;
+    await ensureAuth();
     const f = formularioProyecto;
 
     if (!clienteTieneReservaConfirmada(f.cliente)) {
@@ -284,6 +307,7 @@ export default function AdminPanel() {
 
   const eliminarProyecto = async (id) => {
     if (!dbRef) return;
+    await ensureAuth();
     if (!window.confirm("¿Eliminar este proyecto?")) return;
     try {
       await deleteDoc(doc(dbRef, "proyectos", id));
@@ -356,26 +380,27 @@ export default function AdminPanel() {
     <div className="fondo-admin">
       {/* TOP BAR */}
       <header className="barra-superior" style={{ position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h2 className="titulo" style={{ margin: 0 }}>🛠️ Panel de Administración</h2>
-          <span className="chip-info">Versión Admin</span>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
-          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historial</button>
-          <button className="btn btn-ghost" onClick={() => navigate("/gerente-login")}>🧑‍💼 Gerente Login</button>
-          <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
-          <button
-            className="btn btn-danger"
-            onClick={() => {
-              localStorage.removeItem("adminLogged");
-              navigate("/admin-login");
-            }}
-          >
-            🚪 Cerrar Sesión
-          </button>
-        </div>
-      </header>
+  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+    <h2 className="titulo" style={{ margin: 0 }}>🛠️ Panel de Administración</h2>
+    <span className="chip-info">Versión Admin</span>
+  </div>
+  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
+    <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historico</button>
+    <button className="btn btn-ghost" onClick={() => navigate("/gerente-login")}>🧑‍💼 Gerente Login</button>
+    {/* 🔹 Eliminado el botón "Resetear Historial" */}
+    <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
+    <button
+      className="btn btn-danger"
+      onClick={() => {
+        localStorage.removeItem("adminLogged");
+        navigate("/admin-login");
+      }}
+    >
+      🚪 Cerrar Sesión
+    </button>
+  </div>
+</header>
 
       {/* Contenido capturable en PDF */}
       <div ref={printRef}>

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/pages/Inicio.js
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaWhatsapp } from "react-icons/fa";
 import estilos from "../estilos/inicioEstilos"; // Importamos los estilos separados
@@ -17,19 +18,157 @@ export default function Inicio() {
   const [hoverReservar, setHoverReservar] = useState(false);
   const [hoverAdmin, setHoverAdmin] = useState(false);
 
+  // ===== Slider Portada =====
+  const imagenes = useMemo(() => ["/portada-disruptor.jpg", "/portada-disruptor-2.jpg"], []);
+  const [idx, setIdx] = useState(0);
+  const [prevIdx, setPrevIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const hoverRef = useRef(false);
+
+  // Pre-carga de imágenes para evitar parpadeos
+  useEffect(() => {
+    imagenes.forEach((src) => {
+      const im = new Image();
+      im.src = src;
+    });
+  }, [imagenes]);
+
+  // Cambio automático con fade
+  useEffect(() => {
+    if (paused || hoverRef.current) return;
+    const t = setInterval(() => {
+      setPrevIdx((p) => p);
+      setIdx((i) => (i + 1) % imagenes.length);
+      setPrevIdx((p) => (p + 1) % imagenes.length);
+    }, 5000); // cada 5s
+    return () => clearInterval(t);
+  }, [paused, imagenes.length]);
+
+  const goTo = (i) => {
+    if (i === idx) return;
+    setPrevIdx(idx);
+    setIdx(i % imagenes.length);
+  };
+
+  // Estilos locales del slider (manteniendo tu estética dorado/negro)
+  const sliderStyles = {
+    contenedor: {
+      position: "relative",
+      width: "100%",
+      maxWidth: 1200,
+      margin: "0 auto 18px auto",
+      borderRadius: 18,
+      overflow: "hidden",
+      border: "2px solid #d4af37",
+      boxShadow: "0 10px 28px rgba(184, 140, 80, 0.9), inset 0 0 12px 4px #d4af7f",
+      aspectRatio: "16/9",
+      background: "#000",
+    },
+    capaBrillo: {
+      position: "absolute",
+      inset: 0,
+      background: "linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.35))",
+      pointerEvents: "none",
+      zIndex: 2,
+    },
+    slideBase: {
+      position: "absolute",
+      inset: 0,
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      transition: "opacity 1.2s ease-in-out, transform 6s ease-out",
+      willChange: "opacity, transform",
+    },
+    dots: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 10,
+      display: "flex",
+      justifyContent: "center",
+      gap: 8,
+      zIndex: 3,
+    },
+    dot: (active) => ({
+      width: active ? 12 : 9,
+      height: active ? 12 : 9,
+      borderRadius: "50%",
+      border: "1px solid #d4af37",
+      background: active ? "#d4af37" : "transparent",
+      boxShadow: active ? "0 0 10px #ffd700aa" : "none",
+      cursor: "pointer",
+      transition: "all 0.25s ease",
+    }),
+    textoCaja: {
+      position: "relative",
+      zIndex: 3,
+      marginTop: 12,
+      textAlign: "center",
+    },
+  };
+
   return (
     <div style={estilos.contenedor}>
       <div style={estilos.fondo} />
 
       <div style={estilos.contenido}>
-        {/* 👤 Presentación */}
+        {/* 👤 Presentación con SLIDER */}
         <section style={estilos.portada}>
-          <img src="/portada-disruptor.jpg" alt="Portada Disruptor Digital" style={estilos.imagenPortada} />
-          <p style={{ marginBottom: 12 }}>
-            Asesoría en marketing con visión moderna y elegante. Mi misión es ayudarte a crear y ejecutar
-            cualquier proyecto digital con ideas innovadoras, estrategias efectivas y una presencia que marque diferencia.
-          </p>
-          <p>Mi compromiso es dejar huella en cada uno de los emprendimientos que confíen en mis conocimientos.</p>
+          <div
+            style={sliderStyles.contenedor}
+            onMouseEnter={() => {
+              hoverRef.current = true;
+              setPaused(true);
+            }}
+            onMouseLeave={() => {
+              hoverRef.current = false;
+              setPaused(false);
+            }}
+          >
+            {/* Imagen anterior (para fundido cruzado suave) */}
+            <img
+              key={`prev-${prevIdx}`}
+              src={imagenes[prevIdx]}
+              alt="Portada Disruptor Digital"
+              style={{
+                ...sliderStyles.slideBase,
+                opacity: 0,
+              }}
+            />
+            {/* Imagen activa */}
+            <img
+              key={`curr-${idx}`}
+              src={imagenes[idx]}
+              alt="Portada Disruptor Digital"
+              style={{
+                ...sliderStyles.slideBase,
+                opacity: 1,
+                transform: "scale(1.03)", // leve zoom elegante
+              }}
+            />
+            <div style={sliderStyles.capaBrillo} />
+            {/* Dots */}
+            <div style={sliderStyles.dots}>
+              {imagenes.map((_, i) => (
+                <span
+                  key={`dot-${i}`}
+                  onClick={() => goTo(i)}
+                  style={sliderStyles.dot(i === idx)}
+                  title={`Slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Texto de presentación debajo del slider */}
+          <div style={sliderStyles.textoCaja}>
+            <p style={{ marginBottom: 12 }}>
+              Asesoría en marketing con visión moderna y elegante. Mi misión es ayudarte a crear y ejecutar
+              cualquier proyecto digital con ideas innovadoras, estrategias efectivas y una presencia que marque diferencia.
+            </p>
+            <p>Mi compromiso es dejar huella en cada uno de los emprendimientos que confíen en mis conocimientos.</p>
+          </div>
         </section>
 
         {/* 🎯 Misión y Visión */}
