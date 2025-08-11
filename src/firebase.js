@@ -1,9 +1,13 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getAuth, signInAnonymously } from "firebase/auth";
 
-// ⚙️ Config del proyecto NUEVO (usa exactamente lo que da la consola)
+// ⚙️ Config del proyecto NUEVO
 const firebaseConfig = {
   apiKey: "AIzaSyCxYXUZegxjs_qivThmyoZDPZZlyKmYw1U",
   authDomain: "disruptor-digital-5909a.firebaseapp.com",
@@ -13,16 +17,23 @@ const firebaseConfig = {
   appId: "1:97847727673:web:285eb383a4f7467ab41fe8",
 };
 
+// 1) App primero
 const app = initializeApp(firebaseConfig);
+export default app; // <- por si alguna vez necesitas solo la app
 
-// 🔥 Firestore y Auth
-export const db = getFirestore(app);
+// 2) Firestore exportado por nombre
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+  useFetchStreams: false,
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
+
+// 3) Auth exportado por nombre
 export const auth = getAuth(app);
 
-/**
- * Login anónimo OPCIONAL (no rompe si está deshabilitado).
- * En producción NO loguea el warning para que el cliente no vea ruido.
- */
+// 4) Login anónimo opcional (no rompe si falla)
 (async () => {
   try {
     await signInAnonymously(auth);

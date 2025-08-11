@@ -1,13 +1,66 @@
+// =============================
+// src/components/BadgeDias.js
+// =============================
+import React from "react";
+
+export default function BadgeDias({ style }) {
+  const base = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    background: "#0b0b0b",
+    color: "#d4af50",
+    border: "1px solid #d4af50",
+    borderRadius: 999,
+    padding: "6px 12px",
+    fontWeight: 700,
+    boxShadow: "0 0 10px rgba(212, 175, 80, 0.25)",
+    letterSpacing: 0.3,
+  };
+  return (
+    <span style={{ ...base, ...(style || {}) }}>
+      ✨ Solo L–M–V • sin festivos
+    </span>
+  );
+}
+
+/*
+USO sugerido (Inicio/Home):
+
+// src/pages/Inicio.js (ejemplo)
+import React from "react";
+import { Link } from "react-router-dom";
+import BadgeDias from "../components/BadgeDias";
+
+export default function Inicio() {
+  return (
+    <main>
+      <h2>Reserva tu Asesoría</h2>
+      <div style={{ marginTop: 8 }}>
+        <BadgeDias />
+      </div>
+      <p style={{ marginTop: 10 }}>Agenda disponible los días Lunes, Miércoles y Viernes.</p>
+      <Link className="btn" to="/reserva">Reservar ahora</Link>
+    </main>
+  );
+}
+*/
+
+// =============================
 // src/pages/GerentePanel.js
+// =============================
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/adminPanelEstilo-glass.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Helper fecha corta
+// Helper fecha corta: 8 ago 2025
 const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const fechaCorta = (d) => {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -15,95 +68,56 @@ const fechaCorta = (d) => {
   return `${date.getDate()} ${MESES_CORTOS[date.getMonth()]} ${date.getFullYear()}`;
 };
 
-// WhatsApp del admin
+// WhatsApp admin (puedes cambiarlo)
 const ADMIN_WHATSAPP = "+56955348010";
 
 export default function GerentePanel() {
   const navigate = useNavigate();
-
-  const [reservasConfirmadas, setReservasConfirmadas] = useState([]);
-  const [reservasPendientes, setReservasPendientes] = useState([]);
-  const [cargaPorEmpleado, setCargaPorEmpleado] = useState([]);
-
-  // UI
+  const [reservas, setReservas] = useState([]); // pendientes
+  const [confirmadas, setConfirmadas] = useState([]);
   const [busqueda, setBusqueda] = useState("");
-  const TABS = ["Resumen", "Confirmadas", "Pendientes"];
   const [tab, setTab] = useState("Resumen");
+  const TABS = ["Resumen", "Confirmadas", "Pendientes"]; // Vista solo-lectura
 
-  // PDF
   const printRef = useRef(null);
 
   useEffect(() => {
-    // 🔒 Protección de ruta
     const logged = localStorage.getItem("gerenteLogged");
-    if (logged !== "true") {
-      navigate("/gerente-login");
-      return;
-    }
+    if (logged !== "true") navigate("/gerente-login");
 
-    const unsubPendientes = onSnapshot(collection(db, "reservas"), (snapshot) => {
-      setReservasPendientes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const unsubConfirmadas = onSnapshot(collection(db, "reservasConfirmadas"), (snapshot) => {
-      setReservasConfirmadas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const unsubProyectos = onSnapshot(collection(db, "proyectos"), (snapshot) => {
-      const listaProyectos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-      // Calcular carga por empleado
-      const carga = {};
-      listaProyectos.forEach((proy) => {
-        proy.responsables?.forEach((resp) => {
-          carga[resp] = (carga[resp] || 0) + 1;
-        });
-      });
-      const cargaArray = Object.entries(carga).map(([empleado, cantidad]) => ({ empleado, cantidad }));
-      setCargaPorEmpleado(cargaArray);
-    });
-
+    const unsubPend = onSnapshot(collection(db, "reservas"), (snap) =>
+      setReservas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+    const unsubConf = onSnapshot(collection(db, "reservasConfirmadas"), (snap) =>
+      setConfirmadas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
     return () => {
-      unsubPendientes();
-      unsubConfirmadas();
-      unsubProyectos();
+      unsubPend();
+      unsubConf();
     };
   }, [navigate]);
 
   // KPIs
-  const kpiPendientes = reservasPendientes.length;
-  const kpiConfirmadas = reservasConfirmadas.length;
-
-  const kpiHoy = useMemo(() => {
-    const today = new Date();
-    const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
-    const start = new Date(y, m, d);
-    const end = new Date(y, m, d + 1);
-    return reservasConfirmadas.filter((r) => {
-      const dt = new Date(r.dia);
-      return dt >= start && dt < end;
-    }).length;
-  }, [reservasConfirmadas]);
-
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const kpiPendientes = reservas.length;
+  const kpiConfirmadas = confirmadas.length;
+  const kpiHoy = confirmadas.filter((r) => (r.dia || "").startsWith(hoyISO)).length;
   const kpiSemana = useMemo(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
-    return reservasConfirmadas.filter((r) => {
-      const dt = new Date(r.dia);
-      return dt >= start && dt < end;
+    const end = new Date();
+    end.setDate(now.getDate() + 7);
+    return confirmadas.filter((r) => {
+      const d = new Date(r.dia);
+      return d >= now && d <= end;
     }).length;
-  }, [reservasConfirmadas]);
+  }, [confirmadas]);
 
-  // Filtro por nombre
   const filtrar = (lista) => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return lista;
     return lista.filter((r) => (r.nombre || "").toLowerCase().includes(q));
   };
 
-  // Mensaje WhatsApp (texto nuevo)
   const linkWhatsapp = (reserva) => {
     const tel = ADMIN_WHATSAPP.replace(/\D/g, "");
     const fechaReserva = fechaCorta(new Date());
@@ -117,40 +131,31 @@ export default function GerentePanel() {
     return `https://wa.me/${tel}?text=${txt}`;
   };
 
-  // Exportar PDF (import dinámico)
   const exportarPDF = async () => {
     try {
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
       ]);
-
       const area = printRef.current;
       if (!area) return;
-
       const canvas = await html2canvas(area, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL("image/png");
-
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-
       const imgWidth = pageWidth;
       const imgHeight = (canvas.height * pageWidth) / canvas.width;
-
       let position = 0;
       let heightLeft = imgHeight;
-
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
-
       while (heightLeft > 0) {
         pdf.addPage();
         position = heightLeft - imgHeight;
         pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
-
       const nombreArchivo = `GerentePanel_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.pdf`;
       pdf.save(nombreArchivo);
     } catch (e) {
@@ -161,7 +166,6 @@ export default function GerentePanel() {
 
   return (
     <div className="fondo-admin">
-      {/* TOP BAR */}
       <header className="barra-superior" style={{ position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h2 className="titulo" style={{ margin: 0 }}>📊 Panel del Gerente</h2>
@@ -169,54 +173,47 @@ export default function GerentePanel() {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
-          <button className="btn btn-ghost" onClick={() => navigate("/admin-panel")}>⬅️ Volver a AdminPanel</button>
-          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historial</button>
-          <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF</button>
+          <button className="btn btn-secondary" onClick={exportarPDF}>🧾 Exportar PDF</button>
           <button
             className="btn btn-danger"
             onClick={() => {
               localStorage.removeItem("gerenteLogged");
               navigate("/gerente-login");
             }}
-          >
-            🚪 Cerrar sesión
-          </button>
+          >🚪 Cerrar Sesión</button>
         </div>
       </header>
 
       {/* Contenido exportable */}
       <div ref={printRef}>
         {/* KPIs */}
-       <section className="resumen-panel" style={{ marginTop: 12 }}>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>📋 Pendientes</h3>
-    <p>{kpiPendientes}</p>
-  </div>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>✅ Confirmadas</h3>
-    <p>{kpiConfirmadas}</p>
-  </div>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>📅 Hoy</h3>
-    <p>{kpiHoy}</p>
-  </div>
-  <div className="tarjeta-resumen kpi-ok">
-    <h3>🗓️ Próx. 7 días</h3>
-    <p>{kpiSemana}</p>
-  </div>
-</section>
+        <section className="resumen-panel" style={{ marginTop: 12 }}>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>📋 Pendientes</h3>
+            <p>{kpiPendientes}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>✅ Confirmadas</h3>
+            <p>{kpiConfirmadas}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>📅 Hoy</h3>
+            <p>{kpiHoy}</p>
+          </div>
+          <div className="tarjeta-resumen kpi-ok">
+            <h3>🗓️ Próx. 7 días</h3>
+            <p>{kpiSemana}</p>
+          </div>
+        </section>
 
-
-        {/* TABS + BÚSQUEDA */}
+        {/* Tabs + búsqueda */}
         <nav className="tabs">
           {TABS.map((t) => (
             <button
               key={`tab-${t}`}
               className={`tab-btn ${tab === t ? "active" : ""}`}
               onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
+            >{t}</button>
           ))}
           <div className="spacer" />
           <input
@@ -227,20 +224,19 @@ export default function GerentePanel() {
           />
         </nav>
 
-        {/* TAB RESUMEN */}
+        {/* TAB Resumen */}
         {tab === "Resumen" && (
           <section>
-            {/* Próximas confirmadas (top 10) */}
             <div className="tarjeta">
               <h3 className="subtitulo" style={{ marginTop: 0 }}>✅ Próximas confirmadas</h3>
-              {filtrar(reservasConfirmadas).length === 0 ? (
+              {filtrar(confirmadas).length === 0 ? (
                 <div className="tarjeta vacio">Sin datos</div>
               ) : (
-                filtrar(reservasConfirmadas)
-                  .sort((a, b) => new Date(a.dia) - new Date(b.dia))
+                filtrar(confirmadas)
+                  .sort((a,b) => new Date(a.dia) - new Date(b.dia))
                   .slice(0, 10)
-                  .map((r, i) => (
-                    <div key={`resumen-${r.id}-${i}`} className="fila-reserva tarjeta">
+                  .map((r) => (
+                    <div key={r.id} className="fila-reserva tarjeta">
                       <div className="reserva-info">
                         <div className="reserva-nombre">
                           <strong>{r.nombre}</strong>
@@ -263,34 +259,17 @@ export default function GerentePanel() {
                   ))
               )}
             </div>
-
-            {/* Carga de trabajo por empleado */}
-            <div className="tarjeta" style={{ marginTop: 16 }}>
-              <h3 className="subtitulo" style={{ marginTop: 0 }}>👥 Carga de Trabajo</h3>
-              {cargaPorEmpleado.length === 0 ? (
-                <div>No hay proyectos asignados</div>
-              ) : (
-                <div style={{ display: "grid", gap: 12 }}>
-                  {cargaPorEmpleado.map((empleado, i) => (
-                    <div className="tarjeta" key={`emp-${empleado.empleado}-${i}`}>
-                      <p><strong>Empleado:</strong> {empleado.empleado}</p>
-                      <p><strong>Proyectos asignados:</strong> {empleado.cantidad}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </section>
         )}
 
-        {/* TAB CONFIRMADAS */}
+        {/* TAB Confirmadas */}
         {tab === "Confirmadas" && (
           <section>
-            {filtrar(reservasConfirmadas).length === 0 ? (
+            {filtrar(confirmadas).length === 0 ? (
               <div className="tarjeta vacio">No hay reservas confirmadas.</div>
             ) : (
-              filtrar(reservasConfirmadas).map((r, i) => (
-                <div key={`conf-${r.id}-${i}`} className="tarjeta fila-reserva">
+              filtrar(confirmadas).map((r) => (
+                <div key={r.id} className="tarjeta fila-reserva">
                   <div className="reserva-info">
                     <div className="reserva-nombre">
                       <strong>{r.nombre}</strong>
@@ -315,14 +294,14 @@ export default function GerentePanel() {
           </section>
         )}
 
-        {/* TAB PENDIENTES */}
+        {/* TAB Pendientes */}
         {tab === "Pendientes" && (
           <section>
-            {filtrar(reservasPendientes).length === 0 ? (
+            {filtrar(reservas).length === 0 ? (
               <div className="tarjeta vacio">No hay reservas pendientes.</div>
             ) : (
-              filtrar(reservasPendientes).map((r, i) => (
-                <div key={`pend-${r.id}-${i}`} className="tarjeta fila-reserva">
+              filtrar(reservas).map((r) => (
+                <div key={r.id} className="tarjeta fila-reserva">
                   <div className="reserva-info">
                     <div className="reserva-nombre">
                       <strong>{r.nombre}</strong>
@@ -352,3 +331,11 @@ export default function GerentePanel() {
     </div>
   );
 }
+
+/*
+Asegura la ruta en tu App.js:
+
+import GerentePanel from "./pages/GerentePanel";
+...
+<Route path="/gerente-panel" element={<GerentePanel />} />
+*/

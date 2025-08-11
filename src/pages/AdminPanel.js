@@ -16,7 +16,8 @@ import {
   doc,
   setDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+// ⛔️ OJO: ya NO importamos { db } aquí (lo cargamos en diferido)
+
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -26,8 +27,16 @@ const EMAILJS_SERVICE_ID = "service_xxx";
 const EMAILJS_TEMPLATE_ID_CONFIRM = "template_confirmacion_admin";
 const EMAILJS_PUBLIC_KEY = "PUBLIC_KEY";
 
-// WhatsApp admin (tap para enviar)
+// WhatsApp admin
 const ADMIN_WHATSAPP = "+56955348010";
+
+// ==== Helpers de fecha (formato corto: 8 ago 2025) ====
+const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const fechaCorta = (d) => {
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getDate()} ${MESES_CORTOS[date.getMonth()]} ${date.getFullYear()}`;
+};
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -37,12 +46,15 @@ export default function AdminPanel() {
   const [reservasConfirmadas, setReservasConfirmadas] = useState([]);
   const [proyectos, setProyectos] = useState([]);
 
+  // 🔑 db cargado en diferido (evita ciclo de imports)
+  const [dbRef, setDbRef] = useState(null);
+
   // ====== UI / TABS ======
   const TABS = ["Pendientes", "Confirmadas", "Subir Proyecto", "Proyectos"];
   const [tab, setTab] = useState("Pendientes");
   const [busqueda, setBusqueda] = useState("");
 
-  // ====== REF para PDF (captura la vista completa debajo del header) ======
+  // ====== REF para PDF ======
   const printRef = useRef(null);
 
   // ====== FORM PROYECTO ======
@@ -64,26 +76,37 @@ export default function AdminPanel() {
     const logged = localStorage.getItem("adminLogged");
     if (logged !== "true") navigate("/admin-login");
 
-    const unsubPend = onSnapshot(collection(db, "reservas"), (snap) =>
-      setReservas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubConf = onSnapshot(collection(db, "reservasConfirmadas"), (snap) =>
-      setReservasConfirmadas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubProy = onSnapshot(collection(db, "proyectos"), (snap) =>
-      setProyectos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
+    let unsubPend = () => {};
+    let unsubConf = () => {};
+    let unsubProy = () => {};
+
+    (async () => {
+      // 👉 carga db después de montar (corta cualquier ciclo)
+      const { db } = await import("../firebase");
+      setDbRef(db);
+
+      unsubPend = onSnapshot(collection(db, "reservas"), (snap) =>
+        setReservas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      );
+      unsubConf = onSnapshot(collection(db, "reservasConfirmadas"), (snap) =>
+        setReservasConfirmadas(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      );
+      unsubProy = onSnapshot(collection(db, "proyectos"), (snap) =>
+        setProyectos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      );
+    })();
 
     return () => {
-      unsubPend();
-      unsubConf();
-      unsubProy();
+      unsubPend?.();
+      unsubConf?.();
+      unsubProy?.();
     };
   }, [navigate]);
 
   // ====== HELPERS ======
   const guardarEnHistorial = async (reserva, estado) => {
-    await addDoc(collection(db, "reservasHistorial"), {
+    if (!dbRef) return;
+    await addDoc(collection(dbRef, "reservasHistorial"), {
       ...reserva,
       estado,
       fechaRegistro: new Date().toISOString(),
@@ -92,35 +115,47 @@ export default function AdminPanel() {
 
   const linkWhatsapp = (reserva) => {
     const tel = ADMIN_WHATSAPP.replace(/\D/g, "");
+    const fechaReserva = fechaCorta(new Date());
+    const fechaReunion = fechaCorta(reserva?.dia || "");
     const txt = encodeURIComponent(
-      `Actualización de reserva:\n` +
-        `Cliente: ${reserva?.nombre || ""}\n` +
-        `Email: ${reserva?.email || ""}\n` +
-        `Teléfono: ${reserva?.telefono || ""}\n` +
-        `Día: ${reserva?.dia || ""}\n` +
-        `Hora: ${reserva?.horario || ""}\n` +
-        `Estado: ${reserva?.estado || "pendiente"}`
+      `Hola ${reserva?.nombre || ""}, recibimos tu reserva el ${fechaReserva} para el servicio de "${reserva?.servicioDeseado || ""}".\n` +
+      `Tu reunión es el ${fechaReunion} a las ${reserva?.horario || ""}.\n` +
+      `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
+      `¡Gracias por confiar en nosotros!`
     );
     return `https://wa.me/${tel}?text=${txt}`;
   };
 
   const confirmarReserva = async (reserva) => {
+    if (!dbRef) return;
     const r = { ...reserva, estado: "confirmada", fechaConfirmacion: new Date().toISOString() };
     try {
-      await addDoc(collection(db, "reservasConfirmadas"), r);
+      await addDoc(collection(dbRef, "reservasConfirmadas"), r);
       await guardarEnHistorial(r, "confirmada");
-      await deleteDoc(doc(db, "reservas", reserva.id));
+      await deleteDoc(doc(dbRef, "reservas", reserva.id));
       toast.success(`✅ Confirmada: ${reserva.nombre}`);
 
       if (EMAILJS_SERVICE_ID !== "service_xxx") {
         try {
+          const fechaReserva = fechaCorta(new Date());
+          const fechaReunion = fechaCorta(reserva?.dia || "");
+          const mensaje =
+            `Hola ${reserva?.nombre || ""}, recibimos tu reserva el ${fechaReserva} para el servicio de "${reserva?.servicioDeseado || ""}".\n` +
+            `Tu reunión es el ${fechaReunion} a las ${reserva?.horario || ""}.\n` +
+            `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
+            `¡Gracias por confiar en nosotros!`;
+
           await emailjs.send(
             EMAILJS_SERVICE_ID,
             EMAILJS_TEMPLATE_ID_CONFIRM,
             {
               asunto: `Reserva confirmada — ${reserva?.nombre || ""}`,
-              mensaje: `Se confirmó la reserva de ${reserva?.nombre || ""} para el ${reserva?.dia || ""} a las ${reserva?.horario || ""}.`,
+              mensaje,
               email_admin: "sebastian.valenzuela.fsurf@gmail.com",
+              nombre: reserva?.nombre || "",
+              servicioDeseado: reserva?.servicioDeseado || "",
+              dia: reserva?.dia || "",
+              horario: reserva?.horario || "",
             },
             { publicKey: EMAILJS_PUBLIC_KEY }
           );
@@ -134,11 +169,12 @@ export default function AdminPanel() {
   };
 
   const eliminarReservaPendiente = async (id) => {
+    if (!dbRef) return;
     const r = reservas.find((x) => x.id === id);
     if (!window.confirm("¿Eliminar esta reserva pendiente?")) return;
     try {
       if (r) await guardarEnHistorial(r, "eliminada");
-      await deleteDoc(doc(db, "reservas", id));
+      await deleteDoc(doc(dbRef, "reservas", id));
       toast.info("🗑️ Reserva eliminada");
     } catch (err) {
       toast.error(`❌ Error al eliminar: ${err.message}`);
@@ -146,9 +182,10 @@ export default function AdminPanel() {
   };
 
   const eliminarReservaConfirmada = async (id) => {
+    if (!dbRef) return;
     if (!window.confirm("¿Eliminar esta reserva confirmada?")) return;
     try {
-      await deleteDoc(doc(db, "reservasConfirmadas", id));
+      await deleteDoc(doc(dbRef, "reservasConfirmadas", id));
       toast.info("🗑️ Eliminada de confirmadas");
     } catch (err) {
       toast.error(`❌ Error al eliminar: ${err.message}`);
@@ -190,6 +227,7 @@ export default function AdminPanel() {
 
   const guardarProyecto = async (e) => {
     e.preventDefault();
+    if (!dbRef) return;
     const f = formularioProyecto;
 
     if (!clienteTieneReservaConfirmada(f.cliente)) {
@@ -213,10 +251,10 @@ export default function AdminPanel() {
 
     try {
       if (editId) {
-        await setDoc(doc(db, "proyectos", editId), f);
+        await setDoc(doc(dbRef, "proyectos", editId), f);
         toast.success("💾 Proyecto actualizado");
       } else {
-        await addDoc(collection(db, "proyectos"), f);
+        await addDoc(collection(dbRef, "proyectos"), f);
         toast.success("📤 Proyecto subido");
       }
       setFormularioProyecto({
@@ -245,16 +283,17 @@ export default function AdminPanel() {
   };
 
   const eliminarProyecto = async (id) => {
+    if (!dbRef) return;
     if (!window.confirm("¿Eliminar este proyecto?")) return;
     try {
-      await deleteDoc(doc(db, "proyectos", id));
+      await deleteDoc(doc(dbRef, "proyectos", id));
       toast.info("🗑️ Proyecto eliminado");
     } catch (err) {
       toast.error(`❌ Error al eliminar proyecto: ${err.message}`);
     }
   };
 
-  // ====== PDF (import dinámico para evitar import/first) ======
+  // ====== PDF ======
   const exportarPDF = async () => {
     try {
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
@@ -324,7 +363,8 @@ export default function AdminPanel() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
           <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historial</button>
-          <button className="btn btn-secondary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
+          <button className="btn btn-ghost" onClick={() => navigate("/gerente-login")}>🧑‍💼 Gerente Login</button>
+          <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
           <button
             className="btn btn-danger"
             onClick={() => {
@@ -337,7 +377,7 @@ export default function AdminPanel() {
         </div>
       </header>
 
-      {/* Todo lo siguiente se captura en PDF */}
+      {/* Contenido capturable en PDF */}
       <div ref={printRef}>
         {/* KPIs */}
         <section className="resumen-panel" style={{ marginTop: 12 }}>
@@ -412,7 +452,7 @@ export default function AdminPanel() {
         {/* TAB: CONFIRMADAS */}
         {tab === "Confirmadas" && (
           <section>
-            {confirmadasFiltradas.length === 0 ? (
+            {reservasConfirmadas.length === 0 ? (
               <div className="tarjeta vacio">No hay reservas confirmadas.</div>
             ) : (
               confirmadasFiltradas.map((reserva, i) => (
@@ -530,7 +570,7 @@ export default function AdminPanel() {
                 type="submit"
                 className="btn btn-primary"
                 onClick={guardarProyecto}
-                disabled={!clienteTieneReservaConfirmada(formularioProyecto.cliente)}
+                disabled={!clienteTieneReservaConfirmada(formularioProyecto.cliente) || !dbRef}
               >
                 {editId ? "💾 Actualizar Proyecto" : "📤 Subir Proyecto"}
               </button>

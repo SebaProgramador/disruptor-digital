@@ -1,5 +1,5 @@
 // src/pages/ReservaAsesoria.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   FaUserAlt,
@@ -26,6 +26,9 @@ import estilos from "./ReservaAsesoriaEstilo";
 const FESTIVOS = ["2025-07-28", "2025-09-18", "2025-09-19"];
 const MAX_CUPOS_POR_DIA = 20;
 
+// ✅ Solo lunes (1), miércoles (3) y viernes (5)
+const DIAS_PERMITIDOS = [1, 3, 5];
+
 const SERVICIOS = [
   "Diseño Web",
   "Tienda Online",
@@ -35,29 +38,29 @@ const SERVICIOS = [
 ];
 
 // EmailJS (solo ADMIN)
-const EMAILJS_SERVICE_ID = "service_ajyjiwj";         // ✅ tu Service ID
-const EMAILJS_TEMPLATE_ID = "template_k6flmfv";       // ✅ tu Template ID
-const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";       // ⛳ tu Public Key EmailJS
+const EMAILJS_SERVICE_ID = "service_ajyjiwj";
+const EMAILJS_TEMPLATE_ID = "template_k6flmfv";
+const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";
 
 const esFestivo = (fecha) => {
   const fechaStr = fecha.toISOString().split("T")[0];
   return FESTIVOS.includes(fechaStr);
 };
 
+// ✅ Genera SOLO lunes/miércoles/viernes no festivos
 const obtenerFechasDisponibles = () => {
   const hoy = new Date();
   const fechas = [];
   let diasBuscados = 0;
 
-  while (fechas.length < 10 && diasBuscados < 30) {
-    const diaSemana = hoy.getDay();
-    if (diaSemana !== 0 && diaSemana !== 6 && !esFestivo(hoy)) {
-      fechas.push(new Date(hoy));
+  while (fechas.length < 10 && diasBuscados < 60) {
+    const dow = hoy.getDay();
+    if (DIAS_PERMITIDOS.includes(dow) && !esFestivo(hoy)) {
+      fechas.push(new Date(hoy)); // copia
     }
     hoy.setDate(hoy.getDate() + 1);
     diasBuscados++;
   }
-
   return fechas;
 };
 
@@ -84,18 +87,19 @@ const obtenerHorasDisponibles = async (fechaSeleccionada) => {
   }));
 };
 
-// ✅ Local: evita desfases de zona horaria (no usar "YYYY-MM-DD" directo en Date)
+// ✅ Local: evita desfases de zona horaria
 const toLocalDate = (yyyy_mm_dd) => {
   const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-// ✅ Formato bonito con día de la semana, dd mes yyyy (en castellano)
+// ✅ Formatos de fecha
 const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = [
   "enero","febrero","marzo","abril","mayo","junio",
   "julio","agosto","septiembre","octubre","noviembre","diciembre"
 ];
+const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const pad2 = (n) => String(n).padStart(2, "0");
 const formatoFechaCompleta = (date) => {
   const w = DIAS[date.getDay()];
@@ -104,8 +108,13 @@ const formatoFechaCompleta = (date) => {
   const yyyy = date.getFullYear();
   return `${w}, ${dd} ${mm} ${yyyy}`;
 };
+const fechaCorta = (d) => {
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getDate()} ${MESES_CORTOS[date.getMonth()]} ${date.getFullYear()}`;
+};
 
-// (Se mantiene para los labels del selector de días)
+// (labels del selector)
 const formatoFecha = (fecha) =>
   fecha.toLocaleDateString("es-CL", {
     weekday: "long",
@@ -135,6 +144,10 @@ export default function ReservaAsesoria() {
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
   const [totalReservas, setTotalReservas] = useState(0);
 
+  // 🔴 Aviso visual si el día es inválido
+  const [avisoDia, setAvisoDia] = useState("");
+  const diaBoxRef = useRef(null);
+
   useEffect(() => {
     const q = query(collection(db, "reservas"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -148,19 +161,40 @@ export default function ReservaAsesoria() {
     setFormulario({ ...formulario, [name]: value });
   };
 
+  // ✅ Valida L/M/V y no festivos cuando el usuario elige el día
   const manejarDiaSeleccionado = async (e) => {
     const nuevoDia = e.target.value;
+
+    if (!nuevoDia) {
+      setFormulario({ ...formulario, dia: "" });
+      setHorariosDisponibles([]);
+      return;
+    }
+
+    const date = toLocalDate(nuevoDia);
+    const dow = date.getDay();
+    const permitido = DIAS_PERMITIDOS.includes(dow) && !FESTIVOS.includes(nuevoDia);
+
+    if (!permitido) {
+      setAvisoDia("Solo se puede agendar los días Lunes, Miércoles y Viernes (no festivos).");
+      setFormulario({ ...formulario, dia: "" });
+      setHorariosDisponibles([]);
+      if (diaBoxRef.current) {
+        diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      setTimeout(() => setAvisoDia(""), 6000);
+      return;
+    }
+
+    setAvisoDia("");
     setFormulario({ ...formulario, dia: nuevoDia });
 
-    if (nuevoDia) {
-      const horarios = await obtenerHorasDisponibles(nuevoDia);
-      setHorariosDisponibles(horarios);
-    } else {
-      setHorariosDisponibles([]);
-    }
+    const horarios = await obtenerHorasDisponibles(nuevoDia);
+    setHorariosDisponibles(horarios);
   };
 
-  const enviarEmailAdmin = async () => {
+  // ✅ Email al ADMIN con el mismo texto (param "mensaje")
+  const enviarEmailAdmin = async (mensaje) => {
     const templateParams = {
       nombre: formulario.nombre,
       email: formulario.email,
@@ -171,6 +205,7 @@ export default function ReservaAsesoria() {
       nombreEmpresa: formulario.nombreEmpresa,
       rubro: formulario.rubro,
       servicioDeseado: formulario.servicioDeseado,
+      mensaje,
     };
 
     try {
@@ -182,7 +217,6 @@ export default function ReservaAsesoria() {
       );
     } catch (e) {
       console.error("Error al enviar email al admin:", e);
-      // No interrumpimos el flujo del usuario si falla el email
     }
   };
 
@@ -190,17 +224,32 @@ export default function ReservaAsesoria() {
     e.preventDefault();
 
     if (!/^\+569\d{8}$/.test(formulario.telefono)) {
-      alert("❌ El teléfono debe comenzar con +569 y tener 8 dígitos más.");
+      setAvisoDia("El teléfono debe comenzar con +569 y tener 8 dígitos más.");
+      if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setAvisoDia(""), 6000);
       return;
     }
 
     if (!formulario.dia) {
-      alert("❌ Debes seleccionar un día válido.");
+      setAvisoDia("Debes seleccionar un día válido (Lunes, Miércoles o Viernes).");
+      if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setAvisoDia(""), 6000);
+      return;
+    }
+
+    // ✅ Revalida por seguridad que sea L/M/V y no festivo
+    const dow = toLocalDate(formulario.dia).getDay();
+    if (!DIAS_PERMITIDOS.includes(dow) || FESTIVOS.includes(formulario.dia)) {
+      setAvisoDia("Solo se puede agendar los días Lunes, Miércoles y Viernes (no festivos).");
+      if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setAvisoDia(""), 6000);
       return;
     }
 
     if (totalReservas >= MAX_CUPOS_POR_DIA) {
-      alert("❌ Lo siento, ya no quedan cupos disponibles.");
+      setAvisoDia("Lo siento, ya no quedan cupos disponibles.");
+      if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setAvisoDia(""), 6000);
       return;
     }
 
@@ -216,7 +265,9 @@ export default function ReservaAsesoria() {
       );
 
       if (snapshot.size >= 1) {
-        alert("❌ Este horario ya no tiene cupos disponibles.");
+        setAvisoDia("Este horario ya no tiene cupos disponibles.");
+        if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => setAvisoDia(""), 6000);
         setEnviando(false);
         return;
       }
@@ -224,21 +275,25 @@ export default function ReservaAsesoria() {
       // 1) Guardar en Firebase
       await addDoc(collection(db, "reservas"), formulario);
 
-      // 2) WhatsApp al cliente: fecha de reserva + fecha de reunión con día de la semana
-      const fechaReservaTexto = formatoFechaCompleta(new Date()); // hoy (local)
-      const fechaReunionTexto = formatoFechaCompleta(toLocalDate(formulario.dia)); // del form (local)
+      // 2) Mensaje unificado (WhatsApp + Email)
+      const fechaReservaTextoCorta = fechaCorta(new Date());               // ej: 8 ago 2025
+      const fechaReunionTextoCorta = fechaCorta(toLocalDate(formulario.dia));
+      const mensaje =
+        `Hola ${formulario.nombre}, recibimos tu reserva el ${fechaReservaTextoCorta} para el servicio de "${formulario.servicioDeseado}".\n` +
+        `Tu reunión es el ${fechaReunionTextoCorta} a las ${formulario.horario}.\n` +
+        `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
+        `¡Gracias por confiar en nosotros!`;
 
+      // 3) WhatsApp al cliente
       window.open(
-        `https://wa.me/56955348010?text=${encodeURIComponent(
-          `Hola ${formulario.nombre}, recibimos tu reserva el ${fechaReservaTexto} para el servicio de "${formulario.servicioDeseado}". Tu reunión es el día ${fechaReunionTexto} a las ${formulario.horario}. Te responderemos dentro de 24 horas. ¡Gracias por confiar en nosotros!`
-        )}`,
+        `https://wa.me/56955348010?text=${encodeURIComponent(mensaje)}`,
         "_blank"
       );
 
-      // 3) Aviso por Email SOLO al ADMIN
-      await enviarEmailAdmin();
+      // 4) Aviso por Email SOLO al ADMIN (con el mismo mensaje)
+      await enviarEmailAdmin(mensaje);
 
-      // 4) Limpiar y feedback visual
+      // 5) Limpiar y feedback visual
       setFormulario({
         nombre: "",
         email: "",
@@ -260,9 +315,48 @@ export default function ReservaAsesoria() {
       }, 8000);
     } catch (error) {
       console.error("Error al guardar reserva:", error);
-      alert("❌ Ocurrió un error. Intenta nuevamente.");
+      setAvisoDia("Ocurrió un error. Intenta nuevamente.");
+      setTimeout(() => setAvisoDia(""), 6000);
       setEnviando(false);
     }
+  };
+
+  // 🔴 Estilo chip-error (inline, no toca tus estilos globales)
+  const chipError = {
+    background: "#ffebee",
+    color: "#c62828",
+    border: "1px solid #ffcdd2",
+    padding: "8px 12px",
+    borderRadius: "999px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "10px",
+    fontWeight: 600,
+    marginBottom: "10px",
+  };
+  const chipCloseBtn = {
+    border: "none",
+    background: "transparent",
+    color: "#c62828",
+    fontSize: "16px",
+    cursor: "pointer",
+    lineHeight: 1,
+  };
+
+  // 🟡 Badge dorado/negro permanente
+  const badgeInfo = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "#0b0b0b",
+    color: "#d4af50",
+    border: "1px solid #d4af50",
+    borderRadius: "999px",
+    padding: "6px 12px",
+    fontWeight: 700,
+    boxShadow: "0 0 10px rgba(212, 175, 80, 0.25)",
+    letterSpacing: "0.3px",
+    marginTop: "8px",
   };
 
   return (
@@ -286,6 +380,13 @@ export default function ReservaAsesoria() {
           <h2 style={estilos.titulo}>
             <FaCalendarAlt style={{ color: "#d4af50" }} /> Reserva tu Asesoría
           </h2>
+
+          {/* Badge permanente L–M–V */}
+          <div>
+            <span style={badgeInfo}>
+              ✨ Solo L–M–V • sin festivos
+            </span>
+          </div>
         </div>
 
         <p style={{
@@ -316,15 +417,25 @@ export default function ReservaAsesoria() {
             <option value="Mediana empresa">Mediana empresa</option>
           </select>
 
-          <label style={estilos.etiqueta}><FaCalendarAlt /> Día:</label>
-          <select name="dia" value={formulario.dia} onChange={manejarDiaSeleccionado} required style={estilos.input} disabled={enviando || exito}>
-            <option value="">Selecciona un día</option>
-            {fechasDisponibles.map((fecha, i) => (
-              <option key={i} value={fecha.toISOString().split("T")[0]}>
-                {formatoFecha(fecha)}
-              </option>
-            ))}
-          </select>
+          {/* BLOQUE DÍA + AVISO */}
+          <div ref={diaBoxRef}>
+            {avisoDia && (
+              <div style={chipError} role="alert" aria-live="assertive">
+                <span>⚠️ {avisoDia}</span>
+                <button type="button" onClick={() => setAvisoDia("")} style={chipCloseBtn} aria-label="Cerrar aviso">×</button>
+              </div>
+            )}
+
+            <label style={estilos.etiqueta}><FaCalendarAlt /> Día:</label>
+            <select name="dia" value={formulario.dia} onChange={manejarDiaSeleccionado} required style={estilos.input} disabled={enviando || exito}>
+              <option value="">Selecciona un día</option>
+              {fechasDisponibles.map((fecha, i) => (
+                <option key={i} value={fecha.toISOString().split("T")[0]}>
+                  {formatoFecha(fecha)}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <label style={estilos.etiqueta}><FaClock /> Horario:</label>
           <select name="horario" value={formulario.horario} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito || horariosDisponibles.length === 0}>

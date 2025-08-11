@@ -1,46 +1,52 @@
 // src/routes/PrivateRouteAdmin.jsx
-import React, { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
 
 export default function PrivateRouteAdmin({ children }) {
+  const location = useLocation();
   const [ready, setReady] = useState(false);
   const [ok, setOk] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    // Fuente de verdad: flag puesto por AdminLogin
+    mountedRef.current = true;
+
     const evaluate = () => {
-      const adminFlag =
+      if (!mountedRef.current) return;
+      const flag =
         typeof window !== "undefined" &&
         localStorage.getItem("adminLogged") === "true";
-      setOk(!!adminFlag);
+      setOk(!!flag);
       setReady(true);
     };
 
-    // Nos suscribimos sólo para esperar la init de Firebase (pero ignoramos anónimo)
-    let off = () => {};
+    let unsubscribe = null;
     try {
-      off = onAuthStateChanged(auth, () => {
-        // Cuando Firebase quede listo, evaluamos el flag
+      if (auth && typeof onAuthStateChanged === "function") {
+        unsubscribe = onAuthStateChanged(auth, () => {
+          evaluate(); // esperamos init de Firebase y luego evaluamos flag local
+        });
+      } else {
         evaluate();
-      });
+      }
     } catch {
-      // Si no hay auth disponible por alguna razón, evaluamos igual
       evaluate();
     }
 
-    // Fallback por si no dispara el listener
-    const t = setTimeout(() => {
-      if (!ready) evaluate();
-    }, 1000);
+    const timeoutId = setTimeout(() => evaluate(), 800);
 
     return () => {
-      clearTimeout(t);
-      if (off) off();
+      mountedRef.current = false;
+      clearTimeout(timeoutId);
+      if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (!ready) return null; // (opcional) aquí podrías renderizar un spinner
-  return ok ? children : <Navigate to="/admin-login" replace />;
+  if (!ready) return null; // aquí podrías renderizar un spinner si quieres
+
+  return ok
+    ? children
+    : <Navigate to="/admin-login" replace state={{ from: location }} />;
 }

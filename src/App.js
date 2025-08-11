@@ -4,14 +4,16 @@ import { Routes, Route } from "react-router-dom";
 
 import Inicio from "./pages/Inicio";
 import Politicas from "./pages/Politicas";
-import AdminLogin from "./pages/AdminLogin";
 import ReservaAsesoria from "./pages/ReservaAsesoria";
-import ListaReservas from "./pages/ListaReservas";
+
+import AdminLogin from "./pages/AdminLogin";
 import AdminPanel from "./pages/AdminPanel";
+import ListaReservas from "./pages/ListaReservas";
 import ListaProyectos from "./pages/ListaProyectos";
 import HistorialReservas from "./pages/HistorialReservas";
-import GerentePanel from "./pages/GerentePanel";
+
 import GerenteLogin from "./pages/GerenteLogin";
+import GerentePanel from "./pages/GerentePanel";
 
 import PrivateRouteAdmin from "./routes/PrivateRouteAdmin";
 import PrivateRouteGerente from "./routes/PrivateRouteGerente";
@@ -19,12 +21,12 @@ import PrivateRouteGerente from "./routes/PrivateRouteGerente";
 export default function App() {
   return (
     <Routes>
-      {/* públicas */}
+      {/* Rutas públicas */}
       <Route path="/" element={<Inicio />} />
       <Route path="/politicas" element={<Politicas />} />
       <Route path="/reservar" element={<ReservaAsesoria />} />
 
-      {/* auth admin */}
+      {/* Auth Admin */}
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route
         path="/admin-panel"
@@ -59,7 +61,7 @@ export default function App() {
         }
       />
 
-      {/* auth gerente */}
+      {/* Auth Gerente */}
       <Route path="/gerente-login" element={<GerenteLogin />} />
       <Route
         path="/gerente-panel"
