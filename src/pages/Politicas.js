@@ -88,7 +88,7 @@ export default function Politicas() {
               <FaMoneyBillWave /> Condiciones de pago:
             </p>
             <ul style={{ paddingLeft: "20px", marginTop: "5px" }}>
-              <li>- El primer pago corresponderá al 60% de la inversión total del proyecto mientras que el 40% restante deberá realizarse un día de la reunión.</li>
+              <li>- El primer pago corresponderá al 60% de la inversión total del proyecto mientras que el 40% restante deberá realizarse un día antes de la reunión.</li>
               <li>- Los pagos se realizan a través de transferencia a la cuenta que el profesional le asignará.</li>
             </ul>
           </li>

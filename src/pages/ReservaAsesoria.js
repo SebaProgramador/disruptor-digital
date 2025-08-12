@@ -93,21 +93,8 @@ const toLocalDate = (yyyy_mm_dd) => {
   return new Date(y, m - 1, d);
 };
 
-// ✅ Formatos de fecha
-const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-const MESES = [
-  "enero","febrero","marzo","abril","mayo","junio",
-  "julio","agosto","septiembre","octubre","noviembre","diciembre"
-];
+// ✅ Formato corto de fecha (ej. "8 ago 2025")
 const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const pad2 = (n) => String(n).padStart(2, "0");
-const formatoFechaCompleta = (date) => {
-  const w = DIAS[date.getDay()];
-  const dd = pad2(date.getDate());
-  const mm = MESES[date.getMonth()];
-  const yyyy = date.getFullYear();
-  return `${w}, ${dd} ${mm} ${yyyy}`;
-};
 const fechaCorta = (d) => {
   const date = typeof d === "string" ? new Date(d) : d;
   if (Number.isNaN(date.getTime())) return "";
@@ -276,7 +263,7 @@ export default function ReservaAsesoria() {
       await addDoc(collection(db, "reservas"), formulario);
 
       // 2) Mensaje unificado (WhatsApp + Email)
-      const fechaReservaTextoCorta = fechaCorta(new Date());               // ej: 8 ago 2025
+      const fechaReservaTextoCorta = fechaCorta(new Date()); // ej: 8 ago 2025
       const fechaReunionTextoCorta = fechaCorta(toLocalDate(formulario.dia));
       const mensaje =
         `Hola ${formulario.nombre}, recibimos tu reserva el ${fechaReservaTextoCorta} para el servicio de "${formulario.servicioDeseado}".\n` +
@@ -286,7 +273,7 @@ export default function ReservaAsesoria() {
 
       // 3) WhatsApp al cliente
       window.open(
-        `https://wa.me/56955348010?text=${encodeURIComponent(mensaje)}`,
+        `https://wa.me/56930053314?text=${encodeURIComponent(mensaje)}`,
         "_blank"
       );
 
@@ -325,7 +312,7 @@ export default function ReservaAsesoria() {
   const chipError = {
     background: "#ffebee",
     color: "#c62828",
-    border: "1px solid #ffcdd2",
+    border: "1px solid #ffcdd2", // ✅ corregido
     padding: "8px 12px",
     borderRadius: "999px",
     display: "inline-flex",
@@ -408,7 +395,7 @@ export default function ReservaAsesoria() {
           <input type="email" name="email" value={formulario.email} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito} />
 
           <label style={estilos.etiqueta}><FaPhoneAlt /> Teléfono (+569):</label>
-          <input type="tel" name="telefono" value={formulario.telefono} onChange={manejarCambio} required placeholder="+56912345678" pattern="^\+569\d{8}$" style={estilos.input} disabled={enviando || exito} />
+          <input type="tel" name="telefono" value={formulario.telefono} onChange={manejarCambio} required placeholder="+56912345678" pattern="^\\+569\\d{8}$" style={estilos.input} disabled={enviando || exito} />
 
           <label style={estilos.etiqueta}><FaBuilding /> Tipo de empresa:</label>
           <select name="tipoEmpresa" value={formulario.tipoEmpresa} onChange={manejarCambio} style={estilos.input} disabled={enviando || exito}>
