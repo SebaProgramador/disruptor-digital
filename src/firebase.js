@@ -1,45 +1,18 @@
-// src/firebase.js
+// src/firebase.js (Create React App)
 import { initializeApp } from "firebase/app";
-import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from "firebase/firestore";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-// ⚙️ Config del proyecto NUEVO
-const firebaseConfig = {
-  apiKey: "AIzaSyCxYXUZegxjs_qivThmyoZDPZZlyKmYw1U",
-  authDomain: "disruptor-digital-5909a.firebaseapp.com",
-  projectId: "disruptor-digital-5909a",
-  storageBucket: "disruptor-digital-5909a.firebasestorage.app",
-  messagingSenderId: "97847727673",
-  appId: "1:97847727673:web:285eb383a4f7467ab41fe8",
+const cfg = {
+  apiKey:            process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain:        process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId:         process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId:     process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
-// 1) App primero
-const app = initializeApp(firebaseConfig);
-export default app;
-
-// 2) Firestore
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,  // ⬅️ forzado
-  useFetchStreams: false,
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-  }),
-});
-
-// 3) Auth
+const app  = initializeApp(cfg);
+export const db   = getFirestore(app);
 export const auth = getAuth(app);
-
-// 4) Login anónimo opcional
-(async () => {
-  try {
-    await signInAnonymously(auth);
-  } catch (e) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("Anon auth opcional:", e?.code || e?.message);
-    }
-  }
-})();
