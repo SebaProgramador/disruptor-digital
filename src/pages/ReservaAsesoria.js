@@ -2,31 +2,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  FaUserAlt,
-  FaEnvelope,
-  FaPhoneAlt,
-  FaBuilding,
-  FaCalendarAlt,
-  FaClock,
-  FaTag,
-  FaFolderOpen,
+  FaUserAlt, FaEnvelope, FaPhoneAlt, FaBuilding,
+  FaCalendarAlt, FaClock, FaTag, FaFolderOpen,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  onSnapshot,
+  collection, addDoc, getDocs, query, where, onSnapshot,
 } from "firebase/firestore";
 import emailjs from "@emailjs/browser";
 import estilos from "./ReservaAsesoriaEstilo";
 
 const FESTIVOS = ["2025-07-28", "2025-09-18", "2025-09-19"];
 const MAX_CUPOS_POR_DIA = 20;
-
-// ✅ Solo lunes (1), miércoles (3) y viernes (5)
+// ✅ Lunes (1), Miércoles (3) y Viernes (5)
 const DIAS_PERMITIDOS = [1, 3, 5];
 
 const SERVICIOS = [
@@ -42,6 +30,9 @@ const EMAILJS_SERVICE_ID = "service_ajyjiwj";
 const EMAILJS_TEMPLATE_ID = "template_k6flmfv";
 const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";
 
+// ✅ Número de WhatsApp del ADMIN
+const WHATSAPP_ADMIN = "+56930053314";
+
 const esFestivo = (fecha) => {
   const fechaStr = fecha.toISOString().split("T")[0];
   return FESTIVOS.includes(fechaStr);
@@ -52,7 +43,6 @@ const obtenerFechasDisponibles = () => {
   const hoy = new Date();
   const fechas = [];
   let diasBuscados = 0;
-
   while (fechas.length < 10 && diasBuscados < 60) {
     const dow = hoy.getDay();
     if (DIAS_PERMITIDOS.includes(dow) && !esFestivo(hoy)) {
@@ -93,7 +83,6 @@ const toLocalDate = (yyyy_mm_dd) => {
   return new Date(y, m - 1, d);
 };
 
-// ✅ Formato corto de fecha (ej. "8 ago 2025")
 const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const fechaCorta = (d) => {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -101,7 +90,6 @@ const fechaCorta = (d) => {
   return `${date.getDate()} ${MESES_CORTOS[date.getMonth()]} ${date.getFullYear()}`;
 };
 
-// (labels del selector)
 const formatoFecha = (fecha) =>
   fecha.toLocaleDateString("es-CL", {
     weekday: "long",
@@ -109,6 +97,18 @@ const formatoFecha = (fecha) =>
     month: "short",
     day: "numeric",
   });
+
+// ✅ Normaliza a formato E.164 chileno +569XXXXXXXX
+const normalizarTelefono = (input) => {
+  if (!input) return "";
+  const t = String(input).replace(/\s+/g, "");
+  // Acepta +569XXXXXXXX o 9XXXXXXXX
+  const m1 = /^\+569\d{8}$/.test(t);
+  const m2 = /^9\d{8}$/.test(t);
+  if (m1) return t;
+  if (m2) return `+56${t}`;
+  return ""; // inválido
+};
 
 export default function ReservaAsesoria() {
   const navigate = useNavigate();
@@ -131,7 +131,7 @@ export default function ReservaAsesoria() {
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
   const [totalReservas, setTotalReservas] = useState(0);
 
-  // 🔴 Aviso visual si el día es inválido
+  // Aviso visual si el día es inválido
   const [avisoDia, setAvisoDia] = useState("");
   const diaBoxRef = useRef(null);
 
@@ -180,12 +180,12 @@ export default function ReservaAsesoria() {
     setHorariosDisponibles(horarios);
   };
 
-  // ✅ Email al ADMIN con el mismo texto (param "mensaje")
+  // ✅ Email al ADMIN
   const enviarEmailAdmin = async (mensaje) => {
     const templateParams = {
       nombre: formulario.nombre,
       email: formulario.email,
-      telefono: formulario.telefono,
+      telefono: normalizarTelefono(formulario.telefono) || formulario.telefono,
       tipoEmpresa: formulario.tipoEmpresa,
       dia: formulario.dia,
       horario: formulario.horario,
@@ -210,8 +210,10 @@ export default function ReservaAsesoria() {
   const agregarReserva = async (e) => {
     e.preventDefault();
 
-    if (!/^\+569\d{8}$/.test(formulario.telefono)) {
-      setAvisoDia("El teléfono debe comenzar con +569 y tener 8 dígitos más.");
+    // ✅ Acepta +569XXXXXXXX o 9XXXXXXXX y normaliza
+    const telNormalizado = normalizarTelefono(formulario.telefono);
+    if (!telNormalizado) {
+      setAvisoDia("Formato de teléfono inválido. Usa +569XXXXXXXX o 9XXXXXXXX.");
       if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => setAvisoDia(""), 6000);
       return;
@@ -224,7 +226,7 @@ export default function ReservaAsesoria() {
       return;
     }
 
-    // ✅ Revalida por seguridad que sea L/M/V y no festivo
+    // Revalida L/M/V y no festivo
     const dow = toLocalDate(formulario.dia).getDay();
     if (!DIAS_PERMITIDOS.includes(dow) || FESTIVOS.includes(formulario.dia)) {
       setAvisoDia("Solo se puede agendar los días Lunes, Miércoles y Viernes (no festivos).");
@@ -243,6 +245,7 @@ export default function ReservaAsesoria() {
     setEnviando(true);
 
     try {
+      // Verifica que la hora no esté tomada ese día
       const snapshot = await getDocs(
         query(
           collection(db, "reservas"),
@@ -259,26 +262,40 @@ export default function ReservaAsesoria() {
         return;
       }
 
-      // 1) Guardar en Firebase
-      await addDoc(collection(db, "reservas"), formulario);
+      // 1) Guardar en Firebase (con teléfono normalizado)
+      await addDoc(collection(db, "reservas"), {
+        ...formulario,
+        telefono: telNormalizado,
+      });
 
-      // 2) Mensaje unificado (WhatsApp + Email)
-      const fechaReservaTextoCorta = fechaCorta(new Date()); // ej: 8 ago 2025
+      // 2) Mensajes
+      const fechaReservaTextoCorta = fechaCorta(new Date());
       const fechaReunionTextoCorta = fechaCorta(toLocalDate(formulario.dia));
-      const mensaje =
+      const mensajeCliente =
         `Hola ${formulario.nombre}, recibimos tu reserva el ${fechaReservaTextoCorta} para el servicio de "${formulario.servicioDeseado}".\n` +
         `Tu reunión es el ${fechaReunionTextoCorta} a las ${formulario.horario}.\n` +
         `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
         `¡Gracias por confiar en nosotros!`;
 
-      // 3) WhatsApp al cliente
-      window.open(
-        `https://wa.me/56930053314?text=${encodeURIComponent(mensaje)}`,
-        "_blank"
-      );
+      const mensajeAdmin =
+        `📢 Nueva reserva\n` +
+        `👤 ${formulario.nombre} | ${formulario.email}\n` +
+        `📱 ${telNormalizado}\n` +
+        `🛠️ ${formulario.servicioDeseado}\n` +
+        `📅 ${formulario.dia} ⏰ ${formulario.horario}\n` +
+        `🏢 ${formulario.nombreEmpresa} • ${formulario.tipoEmpresa}\n` +
+        `Rubro: ${formulario.rubro}`;
 
-      // 4) Aviso por Email SOLO al ADMIN (con el mismo mensaje)
-      await enviarEmailAdmin(mensaje);
+      // 3) WhatsApp: primero cliente, luego admin (pequeño delay para evitar bloqueos)
+      const telClienteWa = telNormalizado.replace(/\D/g, "");   // 569XXXXXXXX
+      const telAdminWa = WHATSAPP_ADMIN.replace(/\D/g, "");     // 569XXXXXXXX
+      window.open(`https://wa.me/${telClienteWa}?text=${encodeURIComponent(mensajeCliente)}`, "_blank", "noopener");
+      setTimeout(() => {
+        window.open(`https://wa.me/${telAdminWa}?text=${encodeURIComponent(mensajeAdmin)}`, "_blank", "noopener");
+      }, 500);
+
+      // 4) Aviso por Email SOLO al ADMIN
+      await enviarEmailAdmin(mensajeAdmin);
 
       // 5) Limpiar y feedback visual
       setFormulario({
@@ -308,11 +325,11 @@ export default function ReservaAsesoria() {
     }
   };
 
-  // 🔴 Estilo chip-error (inline, no toca tus estilos globales)
+  // 🔴 Estilo chip-error
   const chipError = {
     background: "#ffebee",
     color: "#c62828",
-    border: "1px solid #ffcdd2", // ✅ corregido
+    border: "1px solid #ffcdd2",
     padding: "8px 12px",
     borderRadius: "999px",
     display: "inline-flex",
@@ -330,7 +347,7 @@ export default function ReservaAsesoria() {
     lineHeight: 1,
   };
 
-  // 🟡 Badge dorado/negro permanente
+  // 🟡 Badge dorado/negro
   const badgeInfo = {
     display: "inline-flex",
     alignItems: "center",
@@ -394,8 +411,23 @@ export default function ReservaAsesoria() {
           <label style={estilos.etiqueta}><FaEnvelope /> Email:</label>
           <input type="email" name="email" value={formulario.email} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito} />
 
-          <label style={estilos.etiqueta}><FaPhoneAlt /> Teléfono (+569):</label>
-          <input type="tel" name="telefono" value={formulario.telefono} onChange={manejarCambio} required placeholder="+56912345678" pattern="^\\+569\\d{8}$" style={estilos.input} disabled={enviando || exito} />
+          <label style={estilos.etiqueta}><FaPhoneAlt /> Teléfono (+56 9):</label>
+          {/* ✅ Pattern relajado y normalización en JS */}
+          <input
+            type="tel"
+            name="telefono"
+            value={formulario.telefono}
+            onChange={manejarCambio}
+            required
+            placeholder="+569XXXXXXXX o 9XXXXXXXX"
+            pattern="^(\+569\d{8}|9\d{8})$"
+            style={estilos.input}
+            disabled={enviando || exito}
+            title="Ingresa +569XXXXXXXX o 9XXXXXXXX"
+          />
+          <small style={{ color: "#c5b27a", display: "block", marginTop: 6 }}>
+            Acepta +569XXXXXXXX o 9XXXXXXXX. Se normaliza automáticamente.
+          </small>
 
           <label style={estilos.etiqueta}><FaBuilding /> Tipo de empresa:</label>
           <select name="tipoEmpresa" value={formulario.tipoEmpresa} onChange={manejarCambio} style={estilos.input} disabled={enviando || exito}>
@@ -482,7 +514,12 @@ export default function ReservaAsesoria() {
         </div>
       )}
 
-      <Link to="/" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{ ...estilos.volver, ...(hover ? estilos.volverHover : {}) }}>
+      <Link
+        to="/"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{ ...estilos.volver, ...(hover ? estilos.volverHover : {}) }}
+      >
         ⬅️ Volver al Inicio
       </Link>
     </div>

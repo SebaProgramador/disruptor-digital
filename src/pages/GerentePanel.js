@@ -25,14 +25,68 @@ const fechaCorta = (d) => {
 };
 
 // WhatsApp del admin
-const ADMIN_WHATSAPP = "+56955348010";
+const ADMIN_WHATSAPP = "+56930053314";
+
+// Fallback por si la colección 'empleados' no existe o no hay permisos
+const BASE_MINIMA = ["Nicolás", "Eliana", "Sebastián"];
+const DEFAULT_CAP = 5;
+
+// Helpers WA
+const waSanitize = (phone) => String(phone || "").replace(/\D/g, "");
+const waUrl = (phone, text) =>
+  `https://wa.me/${waSanitize(phone)}?text=${encodeURIComponent(text || "")}`;
+
+// Link a WhatsApp del CLIENTE
+const linkWhatsapp = (reserva) => {
+  const tel = waSanitize(reserva?.telefono);
+  if (!tel) return "#";
+  const fechaReserva = fechaCorta(new Date());
+  const fechaReunion = fechaCorta(reserva?.dia || "");
+  const txt =
+    `Hola ${reserva?.nombre || ""}, recibimos tu reserva el ${fechaReserva} para el servicio de "${reserva?.servicioDeseado || ""}".\n` +
+    `Tu reunión es el ${fechaReunion} a las ${reserva?.horario || ""}.\n` +
+    `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
+    `¡Gracias por confiar en nosotros!`;
+  return waUrl(tel, txt);
+};
+
+// Link a WhatsApp del ADMIN con resumen
+const linkWhatsappAdmin = (reserva) => {
+  const txt =
+    `📢 Nueva reserva\n` +
+    `👤 ${reserva?.nombre || ""} | ${reserva?.email || ""}\n` +
+    `📱 ${reserva?.telefono || ""}\n` +
+    `🛠️ ${reserva?.servicioDeseado || ""}\n` +
+    `📅 ${reserva?.dia || ""} ⏰ ${reserva?.horario || ""}\n` +
+    `🏢 ${reserva?.nombreEmpresa || ""} • ${reserva?.tipoEmpresa || ""}\n` +
+    `Rubro: ${reserva?.rubro || ""}`;
+  return waUrl(ADMIN_WHATSAPP, txt);
+};
+
+// ── UI helpers para la barra semáforo (según % de capacidad) ────────────────
+const barColor = (p) => {
+  // Verde <50, Amarillo 50–80, Rojo >80
+  if (p > 80) return "linear-gradient(90deg, #9b1c1c, #ef4444)";
+  if (p >= 50) return "linear-gradient(90deg, #a16207, #f59e0b)";
+  return "linear-gradient(90deg, #166534, #22c55e)";
+};
+const barShadow = (p) => {
+  if (p > 80) return "0 0 10px rgba(239, 68, 68, .35)";
+  if (p >= 50) return "0 0 10px rgba(245, 158, 11, .35)";
+  return "0 0 10px rgba(34, 197, 94, .35)";
+};
+const pctWidth = (p) => `${Math.max(p, 2)}%`; // asegura visibilidad mínima
 
 export default function GerentePanel() {
   const navigate = useNavigate();
 
   const [reservasConfirmadas, setReservasConfirmadas] = useState([]);
   const [reservasPendientes, setReservasPendientes] = useState([]);
-  const [cargaPorEmpleado, setCargaPorEmpleado] = useState([]);
+
+  // Datos crudos
+  const [proyectos, setProyectos] = useState([]);
+  const [empleadosBase, setEmpleadosBase] = useState([]); // [{nombre, capacidad, activo?}]
+  const [warnEmpleados, setWarnEmpleados] = useState(false); // para no spamear el toast
 
   // UI
   const [busqueda, setBusqueda] = useState("");
@@ -56,6 +110,7 @@ export default function GerentePanel() {
     let unsubPendientes = () => {};
     let unsubConfirmadas = () => {};
     let unsubProyectos = () => {};
+    let unsubEmpleados = () => {};
 
     (async () => {
       try {
@@ -74,21 +129,40 @@ export default function GerentePanel() {
           (err) => console.error("confirmadas listener:", err)
         );
 
+        // 📁 Proyectos (para conteo de asignaciones)
         unsubProyectos = onSnapshot(
           collection(db, "proyectos"),
-          (snapshot) => {
-            const listaProyectos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-            // Calcular carga por empleado
-            const carga = {};
-            listaProyectos.forEach((proy) => {
-              proy.responsables?.forEach((resp) => {
-                carga[resp] = (carga[resp] || 0) + 1;
-              });
-            });
-            const cargaArray = Object.entries(carga).map(([empleado, cantidad]) => ({ empleado, cantidad }));
-            setCargaPorEmpleado(cargaArray);
-          },
+          (snapshot) => setProyectos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))),
           (err) => console.error("proyectos listener:", err)
+        );
+
+        // 👥 Empleados base desde Firestore (con fallback si faltan permisos)
+        unsubEmpleados = onSnapshot(
+          collection(db, "empleados"),
+          (snap) => {
+            const lista = snap.docs
+              .map((d) => {
+                const data = d.data() || {};
+                return {
+                  nombre: data.nombre,
+                  capacidad: Number(data.capacidad) > 0 ? Number(data.capacidad) : DEFAULT_CAP,
+                  activo: data.activo !== false, // por defecto activos
+                };
+              })
+              .filter((e) => !!e.nombre);
+            setEmpleadosBase(lista);
+          },
+          (err) => {
+            console.error("empleados listener:", err);
+            // Fallback silencioso + un aviso (solo una vez)
+            setEmpleadosBase(
+              BASE_MINIMA.map((n) => ({ nombre: n, capacidad: DEFAULT_CAP, activo: true }))
+            );
+            if (!warnEmpleados) {
+              toast.warn("Sin permisos para 'empleados'. Usando lista base local.", { autoClose: 3000 });
+              setWarnEmpleados(true);
+            }
+          }
         );
       } catch (e) {
         console.error(e);
@@ -100,8 +174,9 @@ export default function GerentePanel() {
       unsubPendientes?.();
       unsubConfirmadas?.();
       unsubProyectos?.();
+      unsubEmpleados?.();
     };
-  }, [navigate]);
+  }, [navigate, warnEmpleados]);
 
   // KPIs
   const kpiPendientes = reservasPendientes.length;
@@ -136,19 +211,56 @@ export default function GerentePanel() {
     return lista.filter((r) => (r.nombre || "").toLowerCase().includes(q));
   };
 
-  // Mensaje WhatsApp (texto nuevo)
-  const linkWhatsapp = (reserva) => {
-    const tel = ADMIN_WHATSAPP.replace(/\D/g, "");
-    const fechaReserva = fechaCorta(new Date());
-    const fechaReunion = fechaCorta(reserva?.dia || "");
-    const txt = encodeURIComponent(
-      `Hola ${reserva?.nombre || ""}, recibimos tu reserva el ${fechaReserva} para el servicio de "${reserva?.servicioDeseado || ""}".\n` +
-      `Tu reunión es el ${fechaReunion} a las ${reserva?.horario || ""}.\n` +
-      `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
-      `¡Gracias por confiar en nosotros!`
-    );
-    return `https://wa.me/${tel}?text=${txt}`;
-  };
+  // 📊 Deriva Carga por empleado (carga vs capacidad, incluye 0 asign.)
+  const cargaPorEmpleado = useMemo(() => {
+    // Conteo de asignaciones por persona
+    const asignacionesPorEmpleado = {};
+    const vistos = new Set();
+
+    proyectos.forEach((proy) => {
+      const responsables = Array.isArray(proy.responsables) ? proy.responsables : [];
+      responsables.forEach((resp) => {
+        vistos.add(resp);
+        asignacionesPorEmpleado[resp] = (asignacionesPorEmpleado[resp] || 0) + 1;
+      });
+    });
+
+    // Base: empleados activos desde Firestore o fallback
+    const baseActivos = (empleadosBase && empleadosBase.length > 0)
+      ? empleadosBase.filter((e) => e.activo !== false)
+      : BASE_MINIMA.map((n) => ({ nombre: n, capacidad: DEFAULT_CAP, activo: true }));
+
+    // Unión: base + los que aparezcan en proyectos aunque no estén en empleados
+    const setNombres = new Set([...baseActivos.map((e) => e.nombre), ...Array.from(vistos)]);
+    const nombres = Array.from(setNombres);
+
+    // Map para lookup de capacidad
+    const capMap = new Map(baseActivos.map((e) => [e.nombre, Number(e.capacidad) || DEFAULT_CAP]));
+
+    const arr = nombres.map((nombre) => {
+      const cantidad = asignacionesPorEmpleado[nombre] || 0;
+      const capacidad = capMap.get(nombre) || DEFAULT_CAP;
+      const pctRaw = capacidad > 0 ? (cantidad / capacidad) * 100 : 0;
+      const pct = Math.min(100, Math.round(pctRaw));
+      const sobre = cantidad > capacidad; // 🚨 sobreasignado
+      return { empleado: nombre, cantidad, capacidad, porcentaje: pct, sobre };
+    });
+
+    // Ordena por ocupación, y desempata por asignaciones
+    arr.sort((a, b) => (b.porcentaje - a.porcentaje) || (b.cantidad - a.cantidad));
+    return arr;
+  }, [proyectos, empleadosBase]);
+
+  // Resúmenes
+  const totalAsign = useMemo(
+    () => cargaPorEmpleado.reduce((acc, x) => acc + (x.cantidad || 0), 0),
+    [cargaPorEmpleado]
+  );
+  const totalPeople = cargaPorEmpleado.length;
+  const avgAsign = totalPeople ? Math.round(totalAsign / totalPeople) : 0;
+  const avgOcup = totalPeople
+    ? Math.round(cargaPorEmpleado.reduce((acc, x) => acc + (x.porcentaje || 0), 0) / totalPeople)
+    : 0;
 
   // Exportar PDF (import dinámico)
   const exportarPDF = async () => {
@@ -195,7 +307,7 @@ export default function GerentePanel() {
   // 🗑️ Vaciar toda la colección 'reservasHistorial' (solo gerente)
   const vaciarHistorial = async () => {
     if (reseteando) return;
-    const confirm1 = window.confirm("⚠️ Esto eliminará TODO el historial. ¿Continuar?");
+    const confirm1 = window.confirm("⚠️ Esto eliminará TODO el histórico. ¿Continuar?");
     if (!confirm1) return;
 
     const texto = window.prompt('Para confirmar escribe: ELIMINAR');
@@ -218,17 +330,30 @@ export default function GerentePanel() {
           snap.docs.map((d) => deleteDoc(doc(db, "reservasHistorial", d.id)))
         );
         total += snap.size;
-        // Si trajo menos que el límite, ya no quedan más docs
         if (snap.size < pageSize) break;
       }
 
       toast.success(`Historial eliminado (${total} documentos)`);
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo vaciar el historial");
+      toast.error("No se pudo vaciar el histórico");
     } finally {
       setReseteando(false);
     }
+  };
+
+  // Estilo del badge sobreasignado
+  const badgeSobre = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "2px 8px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    background: "#fee2e2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
   };
 
   return (
@@ -242,16 +367,16 @@ export default function GerentePanel() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
           <button className="btn btn-ghost" onClick={() => navigate("/admin-panel")}>⬅️ Volver a AdminPanel</button>
-          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historico</button>
+          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Histórico</button>
 
-          {/* 🔹 Reemplazamos la navegación por un botón real que borra el historial */}
+          {/* 🔹 Botón real que borra el historial */}
           <button
             className="btn btn-ghost"
             onClick={vaciarHistorial}
             disabled={reseteando}
             title="Borra por completo la colección 'reservasHistorial'"
           >
-            {reseteando ? "⏳ Vaciando..." : "🗑️ Vaciar Historial"}
+            {reseteando ? "⏳ Vaciando..." : "🗑️ Vaciar Histórico"}
           </button>
 
           <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF</button>
@@ -340,23 +465,126 @@ export default function GerentePanel() {
                       </div>
                       <div className="reserva-acciones">
                         <a className="btn btn-ghost" href={linkWhatsapp(r)} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                        <a className="btn btn-ghost" href={linkWhatsappAdmin(r)} target="_blank" rel="noreferrer" title="Avisar al admin por WhatsApp">🛎️ Admin</a>
                       </div>
                     </div>
                   ))
               )}
             </div>
 
-            {/* Carga de trabajo por empleado */}
+            {/* 👥 Carga de trabajo por empleado (carga vs capacidad) */}
             <div className="tarjeta" style={{ marginTop: 16 }}>
-              <h3 className="subtitulo" style={{ marginTop: 0 }}>👥 Carga de Trabajo</h3>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap: 12, flexWrap: "wrap" }}>
+                <h3 className="subtitulo" style={{ marginTop: 0 }}>👥 Carga de Trabajo</h3>
+                {/* Leyenda */}
+                <div style={{ display:"flex", gap: 8, alignItems:"center", fontSize: 12 }}>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
+                    <i style={{ width:12, height:8, borderRadius:999, background: barColor(35), boxShadow: barShadow(35) }} />{" "}
+                    <b>0–49%</b>
+                  </span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
+                    <i style={{ width:12, height:8, borderRadius:999, background: barColor(65), boxShadow: barShadow(65) }} />{" "}
+                    <b>50–80%</b>
+                  </span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
+                    <i style={{ width:12, height:8, borderRadius:999, background: barColor(95), boxShadow: barShadow(95) }} />{" "}
+                    <b>81–100%</b>
+                  </span>
+                </div>
+              </div>
+
+              {/* Base del % */}
+              <small style={{opacity:.75}}>
+                Base del %: <b>asignaciones / capacidad</b> por persona (capacidad de la colección <code>empleados</code>; default {DEFAULT_CAP}).
+              </small>
+
+              {/* Resumen números */}
+              <div style={{
+                display:"grid",
+                gridTemplateColumns:"repeat(4, minmax(0,1fr))",
+                gap:12,
+                margin:"10px 0"
+              }}>
+                <div className="tarjeta-resumen kpi-ok" style={{ padding:10 }}>
+                  <div style={{ fontSize:12, opacity:.85 }}>Asignaciones totales</div>
+                  <div style={{ fontWeight:700 }}>{totalAsign}</div>
+                </div>
+                <div className="tarjeta-resumen kpi-ok" style={{ padding:10 }}>
+                  <div style={{ fontSize:12, opacity:.85 }}>Colaboradores</div>
+                  <div style={{ fontWeight:700 }}>{totalPeople}</div>
+                </div>
+                <div className="tarjeta-resumen kpi-ok" style={{ padding:10 }}>
+                  <div style={{ fontSize:12, opacity:.85 }}>Promedio / persona</div>
+                  <div style={{ fontWeight:700 }}>{avgAsign}</div>
+                </div>
+                <div className="tarjeta-resumen kpi-ok" style={{ padding:10 }}>
+                  <div style={{ fontSize:12, opacity:.85 }}>Ocupación promedio</div>
+                  <div style={{ fontWeight:700 }}>{avgOcup}%</div>
+                </div>
+              </div>
+
               {cargaPorEmpleado.length === 0 ? (
                 <div>No hay proyectos asignados</div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {cargaPorEmpleado.map((empleado, i) => (
-                    <div className="tarjeta" key={`emp-${empleado.empleado}-${i}`}>
-                      <p><strong>Empleado:</strong> {empleado.empleado}</p>
-                      <p><strong>Proyectos asignados:</strong> {empleado.cantidad}</p>
+                    <div
+                      className="tarjeta"
+                      key={`emp-${empleado.empleado}-${i}`}
+                      style={empleado.sobre ? { boxShadow: "0 0 0 1px #fecaca, 0 0 18px rgba(239,68,68,.22)" } : {}}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                        <p style={{ margin: 0, display:"flex", alignItems:"center", gap:8 }}>
+                          <strong>{empleado.empleado}</strong>
+                          {empleado.sobre && (
+                            <span style={badgeSobre} title="Tiene más asignaciones que su capacidad">
+                              🚨 Sobreasignado
+                            </span>
+                          )}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>{empleado.cantidad}</strong> / {empleado.capacidad} asign. · <strong>{empleado.porcentaje}%</strong>
+                        </p>
+                      </div>
+
+                      {/* Barra de progreso con semáforo */}
+                      <div
+                        aria-label={`Ocupación ${empleado.porcentaje}%`}
+                        title={`${empleado.porcentaje}% de su capacidad (${empleado.cantidad}/${empleado.capacidad})`}
+                        style={{
+                          width: "100%",
+                          height: 14,
+                          borderRadius: 999,
+                          background: "rgba(255,255,255,0.08)",
+                          overflow: "hidden",
+                          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                          marginTop: 8,
+                          position: "relative"
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: pctWidth(empleado.porcentaje),
+                            height: "100%",
+                            borderRadius: 999,
+                            background: barColor(empleado.porcentaje),
+                            boxShadow: barShadow(empleado.porcentaje),
+                            transition: "width .6s ease"
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: "absolute",
+                            right: 8,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: 11,
+                            opacity: .85
+                          }}
+                        >
+                          {empleado.porcentaje}%
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -390,6 +618,7 @@ export default function GerentePanel() {
                   </div>
                   <div className="reserva-acciones">
                     <a className="btn btn-ghost" href={linkWhatsapp(r)} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                    <a className="btn btn-ghost" href={linkWhatsappAdmin(r)} target="_blank" rel="noreferrer" title="Avisar al admin por WhatsApp">🛎️ Admin</a>
                   </div>
                 </div>
               ))
@@ -422,6 +651,7 @@ export default function GerentePanel() {
                   </div>
                   <div className="reserva-acciones">
                     <a className="btn btn-ghost" href={linkWhatsapp(r)} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                    <a className="btn btn-ghost" href={linkWhatsappAdmin(r)} target="_blank" rel="noreferrer" title="Avisar al admin por WhatsApp">🛎️ Admin</a>
                   </div>
                 </div>
               ))

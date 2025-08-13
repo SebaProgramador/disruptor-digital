@@ -29,7 +29,7 @@ const EMAILJS_TEMPLATE_ID_CONFIRM = "template_confirmacion_admin";
 const EMAILJS_PUBLIC_KEY = "PUBLIC_KEY";
 
 // WhatsApp admin
-const ADMIN_WHATSAPP = "+56955348010";
+const ADMIN_WHATSAPP = "+56930053314";
 
 // ==== Helpers de fecha (formato corto: 8 ago 2025) ====
 const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -132,17 +132,32 @@ export default function AdminPanel() {
     });
   };
 
+  // Link WA al CLIENTE
   const linkWhatsapp = (reserva) => {
-    const tel = ADMIN_WHATSAPP.replace(/\D/g, "");
+    const tel = String(reserva?.telefono || "").replace(/\D/g, "");
+    if (!tel) return "#";
     const fechaReserva = fechaCorta(new Date());
     const fechaReunion = fechaCorta(reserva?.dia || "");
-    const txt = encodeURIComponent(
+    const txt =
       `Hola ${reserva?.nombre || ""}, recibimos tu reserva el ${fechaReserva} para el servicio de "${reserva?.servicioDeseado || ""}".\n` +
       `Tu reunión es el ${fechaReunion} a las ${reserva?.horario || ""}.\n` +
       `Te entregaremos el link para que te conectes un día antes de la reunión.\n` +
-      `¡Gracias por confiar en nosotros!`
-    );
-    return `https://wa.me/${tel}?text=${txt}`;
+      `¡Gracias por confiar en nosotros!`;
+    return `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
+  };
+
+  // Link WA para avisar al ADMIN con resumen
+  const linkWhatsappAdmin = (reserva) => {
+    const telAdmin = String(ADMIN_WHATSAPP).replace(/\D/g, "");
+    const txt =
+      `📢 Nueva reserva\n` +
+      `👤 ${reserva?.nombre || ""} | ${reserva?.email || ""}\n` +
+      `📱 ${reserva?.telefono || ""}\n` +
+      `🛠️ ${reserva?.servicioDeseado || ""}\n` +
+      `📅 ${reserva?.dia || ""} ⏰ ${reserva?.horario || ""}\n` +
+      `🏢 ${reserva?.nombreEmpresa || ""} • ${reserva?.tipoEmpresa || ""}\n` +
+      `Rubro: ${reserva?.rubro || ""}`;
+    return `https://wa.me/${telAdmin}?text=${encodeURIComponent(txt)}`;
   };
 
   const confirmarReserva = async (reserva) => {
@@ -380,27 +395,27 @@ export default function AdminPanel() {
     <div className="fondo-admin">
       {/* TOP BAR */}
       <header className="barra-superior" style={{ position: "sticky", top: 0, zIndex: 10 }}>
-  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-    <h2 className="titulo" style={{ margin: 0 }}>🛠️ Panel de Administración</h2>
-    <span className="chip-info">Versión Admin</span>
-  </div>
-  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-    <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
-    <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Historico</button>
-    <button className="btn btn-ghost" onClick={() => navigate("/gerente-login")}>🧑‍💼 Gerente Login</button>
-    {/* 🔹 Eliminado el botón "Resetear Historial" */}
-    <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
-    <button
-      className="btn btn-danger"
-      onClick={() => {
-        localStorage.removeItem("adminLogged");
-        navigate("/admin-login");
-      }}
-    >
-      🚪 Cerrar Sesión
-    </button>
-  </div>
-</header>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <h2 className="titulo" style={{ margin: 0 }}>🛠️ Panel de Administración</h2>
+          <span className="chip-info">Versión Admin</span>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
+          <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Histórico</button>
+          <button className="btn btn-ghost" onClick={() => navigate("/gerente-login")}>🧑‍💼 Gerente Login</button>
+          {/* 🔹 Eliminado el botón "Resetear Historial" */}
+          <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
+          <button
+            className="btn btn-danger"
+            onClick={() => {
+              localStorage.removeItem("adminLogged");
+              navigate("/admin-login");
+            }}
+          >
+            🚪 Cerrar Sesión
+          </button>
+        </div>
+      </header>
 
       {/* Contenido capturable en PDF */}
       <div ref={printRef}>
@@ -465,6 +480,7 @@ export default function AdminPanel() {
                   </div>
                   <div className="reserva-acciones">
                     <a className="btn btn-ghost" href={linkWhatsapp(reserva)} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                    <a className="btn btn-ghost" href={linkWhatsappAdmin(reserva)} target="_blank" rel="noreferrer" title="Avisar al admin por WhatsApp">🛎️ Admin</a>
                     <button className="btn btn-primary" onClick={() => confirmarReserva(reserva)}>✅ Confirmar</button>
                     <button className="btn btn-danger" onClick={() => eliminarReservaPendiente(reserva.id)}>🗑️ Eliminar</button>
                   </div>
@@ -499,6 +515,7 @@ export default function AdminPanel() {
                   </div>
                   <div className="reserva-acciones">
                     <a className="btn btn-ghost" href={linkWhatsapp({ ...reserva, estado: "confirmada" })} target="_blank" rel="noreferrer">📲 WhatsApp</a>
+                    <a className="btn btn-ghost" href={linkWhatsappAdmin(reserva)} target="_blank" rel="noreferrer" title="Avisar al admin por WhatsApp">🛎️ Admin</a>
                     <button className="btn btn-danger" onClick={() => eliminarReservaConfirmada(reserva.id)}>🗑️ Eliminar</button>
                   </div>
                 </div>
