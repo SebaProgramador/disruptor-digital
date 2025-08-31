@@ -16,7 +16,8 @@ import {
   doc,
   setDoc,
 } from "firebase/firestore";
-// db lo cargamos en diferido
+
+// 🔒 Solo verifica sesión; NO inicia anónimo
 import { ensureAuth } from "../utils/ensureAuth";
 
 import { ToastContainer, toast } from "react-toastify";
@@ -47,8 +48,11 @@ export default function AdminPanel() {
   const [reservasConfirmadas, setReservasConfirmadas] = useState([]);
   const [proyectos, setProyectos] = useState([]);
 
-  // 🔑 db cargado en diferido (evita ciclo de imports)
+  // 🔑 db cargado en diferido
   const [dbRef, setDbRef] = useState(null);
+
+  // Guarda el user para no llamar ensureAuth muchas veces
+  const [user, setUser] = useState(null);
 
   // ====== UI / TABS ======
   const TABS = ["Pendientes", "Confirmadas", "Subir Proyecto", "Proyectos"];
@@ -74,6 +78,7 @@ export default function AdminPanel() {
 
   // ====== AUTH & SNAPSHOTS ======
   useEffect(() => {
+    // (opcional) tu flag local para proteger ruta por UI
     const logged = localStorage.getItem("adminLogged");
     if (logged !== "true") {
       navigate("/admin-login");
@@ -86,13 +91,19 @@ export default function AdminPanel() {
 
     (async () => {
       try {
-        // 👇 Imprescindible para que Firestore permita leer
-        await ensureAuth();
+        // 👇 Verifica sesión real en Firebase (NO inicia anónimo)
+        const current = await ensureAuth();
+        if (!current) {
+          navigate("/admin-login");
+          return;
+        }
+        setUser(current);
 
-        // 👉 carga db después de montar (corta cualquier ciclo)
+        // 👉 carga db después de autenticar
         const { db } = await import("../firebase");
         setDbRef(db);
 
+        // Suscripciones
         unsubPend = onSnapshot(
           collection(db, "reservas"),
           (snap) => setReservas(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
@@ -110,7 +121,8 @@ export default function AdminPanel() {
         );
       } catch (e) {
         console.error(e);
-        toast.error("No se pudo iniciar la sesión con Firebase.");
+        toast.error("No se pudo conectar con Firebase.");
+        navigate("/admin-login");
       }
     })();
 
@@ -122,9 +134,17 @@ export default function AdminPanel() {
   }, [navigate]);
 
   // ====== HELPERS ======
+  const requireAuth = () => {
+    if (!user) {
+      toast.warn("Necesitas iniciar sesión.");
+      navigate("/admin-login");
+      return false;
+    }
+    return true;
+  };
+
   const guardarEnHistorial = async (reserva, estado) => {
-    if (!dbRef) return;
-    await ensureAuth();
+    if (!dbRef || !requireAuth()) return;
     await addDoc(collection(dbRef, "reservasHistorial"), {
       ...reserva,
       estado,
@@ -161,8 +181,7 @@ export default function AdminPanel() {
   };
 
   const confirmarReserva = async (reserva) => {
-    if (!dbRef) return;
-    await ensureAuth();
+    if (!dbRef || !requireAuth()) return;
     const r = { ...reserva, estado: "confirmada", fechaConfirmacion: new Date().toISOString() };
     try {
       await addDoc(collection(dbRef, "reservasConfirmadas"), r);
@@ -204,8 +223,7 @@ export default function AdminPanel() {
   };
 
   const eliminarReservaPendiente = async (id) => {
-    if (!dbRef) return;
-    await ensureAuth();
+    if (!dbRef || !requireAuth()) return;
     const r = reservas.find((x) => x.id === id);
     if (!window.confirm("¿Eliminar esta reserva pendiente?")) return;
     try {
@@ -218,8 +236,7 @@ export default function AdminPanel() {
   };
 
   const eliminarReservaConfirmada = async (id) => {
-    if (!dbRef) return;
-    await ensureAuth();
+    if (!dbRef || !requireAuth()) return;
     if (!window.confirm("¿Eliminar esta reserva confirmada?")) return;
     try {
       await deleteDoc(doc(dbRef, "reservasConfirmadas", id));
@@ -264,8 +281,7 @@ export default function AdminPanel() {
 
   const guardarProyecto = async (e) => {
     e.preventDefault();
-    if (!dbRef) return;
-    await ensureAuth();
+    if (!dbRef || !requireAuth()) return;
     const f = formularioProyecto;
 
     if (!clienteTieneReservaConfirmada(f.cliente)) {
@@ -321,8 +337,7 @@ export default function AdminPanel() {
   };
 
   const eliminarProyecto = async (id) => {
-    if (!dbRef) return;
-    await ensureAuth();
+    if (!dbRef || !requireAuth()) return;
     if (!window.confirm("¿Eliminar este proyecto?")) return;
     try {
       await deleteDoc(doc(dbRef, "proyectos", id));
@@ -403,7 +418,6 @@ export default function AdminPanel() {
           <button className="btn btn-ghost" onClick={() => navigate("/")}>🏠 Inicio</button>
           <button className="btn btn-ghost" onClick={() => navigate("/historial-reservas")}>📜 Histórico</button>
           <button className="btn btn-ghost" onClick={() => navigate("/gerente-login")}>🧑‍💼 Gerente Login</button>
-          {/* 🔹 Eliminado el botón "Resetear Historial" */}
           <button className="btn btn-primary" onClick={exportarPDF}>🧾 Exportar PDF (vista)</button>
           <button
             className="btn btn-danger"
