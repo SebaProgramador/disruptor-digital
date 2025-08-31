@@ -1,0 +1,5 @@
+[33m46468ed[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Actualización interprete-lsch-app
+[33mfe308c1[m chore: .gitignore limpio; env example; firebase lee variables
+[33m40e50d0[m Deploy: paneles actualizados, WA admin, validaciones y reglas
+[33md386582[m Fix ESLint y typo CSS en ReservaAsesoria; limpieza de variables no usadas
+[33m673c38d[m Actualización de proyecto
