@@ -1,8 +1,10 @@
-// src/firebase.js (Create React App)
+// src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
+// Configuración desde variables de entorno (.env)
 const cfg = {
   apiKey:            process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain:        process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -13,6 +15,15 @@ const cfg = {
   measurementId:     process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
-const app  = initializeApp(cfg);
-export const db   = getFirestore(app);
-export const auth = getAuth(app);
+if (!cfg.apiKey) {
+  console.error("❌ ERROR: Firebase API key está vacía. Revisa tu archivo .env");
+}
+
+const app = initializeApp(cfg);
+
+// Exportar servicios
+export const db      = getFirestore(app);
+export const auth    = getAuth(app);
+export const storage = getStorage(app);
+
+export default app;
