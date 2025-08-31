@@ -10,8 +10,8 @@ export default function GerenteLogin() {
   const navigate = useNavigate();
 
   // Credenciales (puedes cambiarlas)
-  const GERENTE_USER = "gerente";
-  const GERENTE_PASS = "gerente123";
+  const GERENTE_USER = "DD-GERENTE";
+  const GERENTE_PASS = "NicoGerent3-25";
 
   // Assets desde /public
   const bgUrl = useMemo(() => `${process.env.PUBLIC_URL}/fondo-login.gif`, []);
