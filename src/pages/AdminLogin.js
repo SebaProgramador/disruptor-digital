@@ -10,8 +10,8 @@ export default function AdminLogin() {
   const navigate = useNavigate();
 
   // Credenciales locales (puedes cambiarlas si quieres)
-  const ADMIN_USER = "admin";
-  const ADMIN_PASS = "admin123";
+  const ADMIN_USER = "DD-ADM";
+  const ADMIN_PASS = "Digit@l25";
 
   // Assets desde /public (válidos en localhost y dominio)
   const bgUrl = useMemo(() => `${process.env.PUBLIC_URL}/fondo-login.gif`, []);

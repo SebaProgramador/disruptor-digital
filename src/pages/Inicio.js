@@ -4,14 +4,38 @@ import { Link } from "react-router-dom";
 import { FaWhatsapp } from "react-icons/fa";
 import estilos from "../estilos/inicioEstilos"; // Importamos los estilos separados
 
-const servicios = [
-  { icono: "💡🔍", titulo: "Estrategia de Redes Sociales", texto: "Desarrollamos un plan personalizado para aumentar tu visibilidad y conectar con tu público objetivo en redes sociales." },
-  { icono: "📱💬", titulo: "Gestión de Redes Sociales", texto: "Creamos contenido atractivo, respondemos a comentarios y mensajes, y monitoreamos tus métricas para maximizar tu presencia en línea." },
-  { icono: "✏️📄", titulo: "Creación de Contenido", texto: "Desarrollamos contenido de alta calidad y relevante para tu audiencia, incluyendo textos, imágenes, videos y más." },
-  { icono: "🖌️📐", titulo: "Creación de Logo", texto: "Diseñamos un logotipo único y memorable que refleje la esencia de tu marca." },
-  { icono: "🚚📦", titulo: "Logística", texto: "Optimizamos tus procesos internos y externos para garantizar que tu producto o servicio llegue a tus clientes de manera eficiente." },
-  { icono: "✅💵", titulo: "Estrategia de Cierre de Ventas", texto: "Plan personalizado para aumentar tus ventas, incluyendo gestión, capacitación y análisis para maximizar tus resultados." },
-  { icono: "✅", titulo: "Servicio Completo", texto: "Nos encargamos de la estrategia, contenido, diseño y logística para que puedas enfocarte en crecer y prosperar." },
+// ✅ Servicios ACTUALIZADOS (modo enseñanza) — se eliminaron “Cierre de Ventas” y “Servicio Completo”
+export const servicios = [
+  {
+    icono: "💡🔍",
+    titulo: "Estrategia de Redes Sociales",
+    texto:
+      "Te ayudo a crear un plan de marketing personalizado para aumentar tu visibilidad y conectar con tu público en redes sociales.",
+  },
+  {
+    icono: "📱💬",
+    titulo: "Gestión de Redes Sociales",
+    texto:
+      "Te enseño todas las técnicas necesarias para que puedas manejar tus redes sociales de manera efectiva.",
+  },
+  {
+    icono: "✏️📄",
+    titulo: "Creación de Contenido",
+    texto:
+      "Te enseño a crear contenido que destaque sobre tu competencia con un enfoque innovador y efectivo.",
+  },
+  {
+    icono: "🖌️📐",
+    titulo: "Creación de Logotipo",
+    texto:
+      "Te enseño a crear un logotipo que refleje lo que ofreces y que además represente la esencia y los valores de tu marca.",
+  },
+  {
+    icono: "🚚📦",
+    titulo: "Logística",
+    texto:
+      "Te enseño técnicas de optimización para garantizar que tu producto o servicio se entregue de manera clara y eficiente.",
+  },
 ];
 
 export default function Inicio() {
@@ -213,7 +237,7 @@ export default function Inicio() {
         <section style={estilos.consultas}>
           <h2 style={estilos.consultasTitulo}>Consultas y Dudas</h2>
           <a
-            href="https://wa.me/56912345678"
+            href="https://wa.me/56955348010"
             target="_blank"
             rel="noreferrer"
             style={estilos.enlaceWhatsapp}

@@ -7,7 +7,8 @@ import {
 } from "react-icons/fa";
 import { db } from "../firebase";
 import {
-  collection, addDoc, getDocs, query, where, onSnapshot,
+  collection, addDoc, query, where, onSnapshot,
+  runTransaction, doc, serverTimestamp
 } from "firebase/firestore";
 import emailjs from "@emailjs/browser";
 import estilos from "./ReservaAsesoriaEstilo";
@@ -17,12 +18,13 @@ const MAX_CUPOS_POR_DIA = 20;
 // ✅ Lunes (1), Miércoles (3) y Viernes (5)
 const DIAS_PERMITIDOS = [1, 3, 5];
 
+// ✅ MISMO LISTADO QUE EN Inicio.js (modo enseñanza)
 const SERVICIOS = [
-  "Diseño Web",
-  "Tienda Online",
-  "Branding",
-  "Publicidad",
-  "Mantenimiento Web",
+  "Estrategia de Redes Sociales",
+  "Gestión de Redes Sociales",
+  "Creación de Contenido",
+  "Creación de Logotipo",
+  "Logística",
 ];
 
 // EmailJS (solo ADMIN)
@@ -30,8 +32,14 @@ const EMAILJS_SERVICE_ID = "service_ajyjiwj";
 const EMAILJS_TEMPLATE_ID = "template_k6flmfv";
 const EMAILJS_PUBLIC_KEY = "frWaGRd2eCSYgm1Yf";
 
-// ✅ Número de WhatsApp del ADMIN
-const WHATSAPP_ADMIN = "+56930053314";
+// ✅ Número de WhatsApp del ADMIN (actualizado)
+const WHATSAPP_ADMIN = "+56955348010";
+
+const HORAS = [
+  "09:00","10:00","11:00","12:00",
+  "13:00","14:00","15:00","16:00",
+  "17:00","18:00","19:00"
+];
 
 const esFestivo = (fecha) => {
   const fechaStr = fecha.toISOString().split("T")[0];
@@ -52,29 +60,6 @@ const obtenerFechasDisponibles = () => {
     diasBuscados++;
   }
   return fechas;
-};
-
-const obtenerHorasDisponibles = async (fechaSeleccionada) => {
-  const horarios = [
-    "09:00","10:00","11:00","12:00",
-    "13:00","14:00","15:00","16:00",
-    "17:00","18:00","19:00"
-  ];
-
-  const snapshot = await getDocs(
-    query(collection(db, "reservas"), where("dia", "==", fechaSeleccionada))
-  );
-
-  const conteo = {};
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    conteo[data.horario] = (conteo[data.horario] || 0) + 1;
-  });
-
-  return horarios.map((hora) => ({
-    hora,
-    disponible: !conteo[hora],
-  }));
 };
 
 // ✅ Local: evita desfases de zona horaria
@@ -128,13 +113,17 @@ export default function ReservaAsesoria() {
   const [enviando, setEnviando] = useState(false);
   const [exito, setExito] = useState(false);
   const [hover, setHover] = useState(false);
-  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+  const [horariosDisponibles, setHorariosDisponibles] = useState(HORAS.map(h => ({ hora: h, disponible: true })));
   const [totalReservas, setTotalReservas] = useState(0);
 
-  // Aviso visual si el día es inválido
+  // Aviso visual si el día/telefono/horario es inválido
   const [avisoDia, setAvisoDia] = useState("");
   const diaBoxRef = useRef(null);
 
+  // 🔔 Unsubscribe del listener por día seleccionado
+  const unsubHorariosRef = useRef(null);
+
+  // Total de reservas (para cupo global)
   useEffect(() => {
     const q = query(collection(db, "reservas"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -148,13 +137,46 @@ export default function ReservaAsesoria() {
     setFormulario({ ...formulario, [name]: value });
   };
 
+  // 🔄 Suscriptor en tiempo real de horarios para un día
+  const suscribirHorasDelDia = (diaStr) => {
+    // limpia suscripción anterior
+    if (unsubHorariosRef.current) {
+      unsubHorariosRef.current();
+      unsubHorariosRef.current = null;
+    }
+    if (!diaStr) {
+      setHorariosDisponibles(HORAS.map(h => ({ hora: h, disponible: true })));
+      return;
+    }
+
+    const q = query(collection(db, "reservas"), where("dia", "==", diaStr));
+    unsubHorariosRef.current = onSnapshot(q, (snapshot) => {
+      const ocupadas = new Set();
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.horario) ocupadas.add(data.horario);
+      });
+      const nuevos = HORAS.map((h) => ({ hora: h, disponible: !ocupadas.has(h) }));
+      setHorariosDisponibles(nuevos);
+      // Si la hora que el usuario tenía elegida se ocupó, fuerza cambio
+      const horaActual = formulario.horario;
+      if (ocupadas.has(horaActual)) {
+        const primeraLibre = nuevos.find((x) => x.disponible)?.hora || "09:00";
+        setFormulario((f) => ({ ...f, horario: primeraLibre }));
+        setAvisoDia("Ese horario se ocupó recién. Elegimos el siguiente disponible.");
+        setTimeout(() => setAvisoDia(""), 5000);
+      }
+    });
+  };
+
   // ✅ Valida L/M/V y no festivos cuando el usuario elige el día
   const manejarDiaSeleccionado = async (e) => {
     const nuevoDia = e.target.value;
 
     if (!nuevoDia) {
       setFormulario({ ...formulario, dia: "" });
-      setHorariosDisponibles([]);
+      setHorariosDisponibles(HORAS.map(h => ({ hora: h, disponible: true })));
+      suscribirHorasDelDia(null);
       return;
     }
 
@@ -165,7 +187,7 @@ export default function ReservaAsesoria() {
     if (!permitido) {
       setAvisoDia("Solo se puede agendar los días Lunes, Miércoles y Viernes (no festivos).");
       setFormulario({ ...formulario, dia: "" });
-      setHorariosDisponibles([]);
+      setHorariosDisponibles(HORAS.map(h => ({ hora: h, disponible: true })));
       if (diaBoxRef.current) {
         diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -175,9 +197,8 @@ export default function ReservaAsesoria() {
 
     setAvisoDia("");
     setFormulario({ ...formulario, dia: nuevoDia });
-
-    const horarios = await obtenerHorasDisponibles(nuevoDia);
-    setHorariosDisponibles(horarios);
+    // 👂 Escuchar en tiempo real ese día
+    suscribirHorasDelDia(nuevoDia);
   };
 
   // ✅ Email al ADMIN
@@ -210,7 +231,7 @@ export default function ReservaAsesoria() {
   const agregarReserva = async (e) => {
     e.preventDefault();
 
-    // ✅ Acepta +569XXXXXXXX o 9XXXXXXXX y normaliza
+    // ✅ Teléfono
     const telNormalizado = normalizarTelefono(formulario.telefono);
     if (!telNormalizado) {
       setAvisoDia("Formato de teléfono inválido. Usa +569XXXXXXXX o 9XXXXXXXX.");
@@ -219,6 +240,7 @@ export default function ReservaAsesoria() {
       return;
     }
 
+    // ✅ Día válido
     if (!formulario.dia) {
       setAvisoDia("Debes seleccionar un día válido (Lunes, Miércoles o Viernes).");
       if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -235,6 +257,7 @@ export default function ReservaAsesoria() {
       return;
     }
 
+    // ✅ Cupo global
     if (totalReservas >= MAX_CUPOS_POR_DIA) {
       setAvisoDia("Lo siento, ya no quedan cupos disponibles.");
       if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -242,30 +265,39 @@ export default function ReservaAsesoria() {
       return;
     }
 
+    // ✅ La hora está libre en este momento (UI)
+    const slot = horariosDisponibles.find(h => h.hora === formulario.horario);
+    if (!slot || !slot.disponible) {
+      setAvisoDia("Ese horario ya fue tomado. Por favor elige otro.");
+      if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setAvisoDia(""), 6000);
+      return;
+    }
+
     setEnviando(true);
 
-    try {
-      // Verifica que la hora no esté tomada ese día
-      const snapshot = await getDocs(
-        query(
-          collection(db, "reservas"),
-          where("dia", "==", formulario.dia),
-          where("horario", "==", formulario.horario)
-        )
-      );
+    // 🧱 BLOQUEO ATÓMICO (anti carrera): crea doc en /bloques/{dia_hora}
+    const bloqueId = `${formulario.dia}_${formulario.horario}`;
+    const bloqueRef = doc(db, "bloques", bloqueId);
 
-      if (snapshot.size >= 1) {
-        setAvisoDia("Este horario ya no tiene cupos disponibles.");
-        if (diaBoxRef.current) diaBoxRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => setAvisoDia(""), 6000);
-        setEnviando(false);
-        return;
-      }
+    try {
+      await runTransaction(db, async (tx) => {
+        const bSnap = await tx.get(bloqueRef);
+        if (bSnap.exists()) {
+          throw new Error("BLOQUE_OCUPADO");
+        }
+        tx.set(bloqueRef, {
+          dia: formulario.dia,
+          horario: formulario.horario,
+          createdAt: serverTimestamp(),
+        });
+      });
 
       // 1) Guardar en Firebase (con teléfono normalizado)
       await addDoc(collection(db, "reservas"), {
         ...formulario,
         telefono: telNormalizado,
+        createdAt: serverTimestamp(),
       });
 
       // 2) Mensajes
@@ -286,7 +318,7 @@ export default function ReservaAsesoria() {
         `🏢 ${formulario.nombreEmpresa} • ${formulario.tipoEmpresa}\n` +
         `Rubro: ${formulario.rubro}`;
 
-      // 3) WhatsApp: primero cliente, luego admin (pequeño delay para evitar bloqueos)
+      // 3) WhatsApp: primero cliente, luego admin
       const telClienteWa = telNormalizado.replace(/\D/g, "");   // 569XXXXXXXX
       const telAdminWa = WHATSAPP_ADMIN.replace(/\D/g, "");     // 569XXXXXXXX
       window.open(`https://wa.me/${telClienteWa}?text=${encodeURIComponent(mensajeCliente)}`, "_blank", "noopener");
@@ -319,9 +351,15 @@ export default function ReservaAsesoria() {
       }, 8000);
     } catch (error) {
       console.error("Error al guardar reserva:", error);
-      setAvisoDia("Ocurrió un error. Intenta nuevamente.");
+      // Si falló porque ya existía el bloque
+      if (String(error?.message || "").includes("BLOQUE_OCUPADO")) {
+        setAvisoDia("Ese horario acaba de ocuparse. Por favor elige otro.");
+      } else {
+        setAvisoDia("Ocurrió un error. Intenta nuevamente.");
+      }
       setTimeout(() => setAvisoDia(""), 6000);
       setEnviando(false);
+      // ⚠️ No borramos el bloque aquí porque no se llegó a crear en este flujo si falló por BLOQUE_OCUPADO.
     }
   };
 
@@ -363,6 +401,16 @@ export default function ReservaAsesoria() {
     marginTop: "8px",
   };
 
+  // 🔚 Limpia el listener al desmontar
+  useEffect(() => {
+    return () => {
+      if (unsubHorariosRef.current) {
+        unsubHorariosRef.current();
+        unsubHorariosRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <div style={estilos.fondo}>
       <div style={estilos.contenedor}>
@@ -388,7 +436,7 @@ export default function ReservaAsesoria() {
           {/* Badge permanente L–M–V */}
           <div>
             <span style={badgeInfo}>
-              ✨ Solo L–M–V • sin festivos
+              ✨ Solo L–M–V • Sin Festivos ✨
             </span>
           </div>
         </div>
@@ -405,7 +453,7 @@ export default function ReservaAsesoria() {
         </p>
 
         <form onSubmit={agregarReserva}>
-          <label style={estilos.etiqueta}><FaUserAlt /> Nombre:</label>
+          <label style={estilos.etiqueta}><FaUserAlt /> Nombre - Apellidos:</label>
           <input name="nombre" value={formulario.nombre} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito} />
 
           <label style={estilos.etiqueta}><FaEnvelope /> Email:</label>
@@ -457,16 +505,19 @@ export default function ReservaAsesoria() {
           </div>
 
           <label style={estilos.etiqueta}><FaClock /> Horario:</label>
-          <select name="horario" value={formulario.horario} onChange={manejarCambio} required style={estilos.input} disabled={enviando || exito || horariosDisponibles.length === 0}>
-            {horariosDisponibles.length === 0
-              ? ["09:00","10:00","11:00"].map((hora) => (
-                  <option key={hora} value={hora}>{hora}</option>
-                ))
-              : horariosDisponibles.map(({ hora, disponible }) => (
-                  <option key={hora} value={hora} disabled={!disponible}>
-                    {hora} {disponible ? "" : "(No disponible)"}
-                  </option>
-                ))}
+          <select
+            name="horario"
+            value={formulario.horario}
+            onChange={manejarCambio}
+            required
+            style={estilos.input}
+            disabled={enviando || exito || horariosDisponibles.length === 0}
+          >
+            {horariosDisponibles.map(({ hora, disponible }) => (
+              <option key={hora} value={hora} disabled={!disponible}>
+                {hora} {disponible ? "" : "(No disponible)"}
+              </option>
+            ))}
           </select>
 
           <label style={estilos.etiqueta}><FaTag /> Nombre de empresa:</label>
