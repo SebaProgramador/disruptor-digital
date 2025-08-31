@@ -15,6 +15,13 @@ const cfg = {
   measurementId:     process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
+// 🚨 Chequeo rápido para debug
+console.log("🔎 ENV sanity check:", {
+  API: (process.env.REACT_APP_FIREBASE_API_KEY || "").slice(0, 8),
+  DOMAIN: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  PID: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+});
+
 if (!cfg.apiKey) {
   console.error("❌ ERROR: Firebase API key está vacía. Revisa tu archivo .env");
 }
