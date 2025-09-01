@@ -94,6 +94,7 @@ export default function GerenteLogin() {
       color: "#d4af7f",
       fontSize: ".95rem",
       userSelect: "none",
+      cursor: "pointer",
     },
     checkbox: { width: 18, height: 18, cursor: "pointer" },
     error: {
@@ -144,7 +145,7 @@ export default function GerenteLogin() {
     if (cargando) return;
 
     const u = usuario.trim();
-    const p = clave.trim();
+    const p = clave; // ❗ NO trim: respeta símbolos y guiones
 
     if (!u || !p) {
       setError("❌ Completa usuario y contraseña.");
@@ -156,6 +157,10 @@ export default function GerenteLogin() {
 
     setTimeout(() => {
       if (u === GERENTE_USER && p === GERENTE_PASS) {
+        // Flags para PrivateRouteGerente
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("role", "gerente");
+        // Compatibilidad si lo usabas
         localStorage.setItem("gerenteLogged", "true");
         navigate("/gerente-panel", { replace: true });
       } else {
@@ -184,10 +189,7 @@ export default function GerenteLogin() {
             style={estilos.input}
             value={usuario}
             autoComplete="username"
-            onChange={(e) => {
-              setUsuario(e.target.value);
-              if (error) setError("");
-            }}
+            onChange={(e) => { setUsuario(e.target.value); if (error) setError(""); }}
             required
           />
 
@@ -199,10 +201,7 @@ export default function GerenteLogin() {
             style={estilos.input}
             value={clave}
             autoComplete="current-password"
-            onChange={(e) => {
-              setClave(e.target.value);
-              if (error) setError("");
-            }}
+            onChange={(e) => { setClave(e.target.value); if (error) setError(""); }}
             required
           />
 
@@ -217,6 +216,7 @@ export default function GerenteLogin() {
               checked={mostrarClave}
               onChange={() => setMostrarClave((v) => !v)}
               style={estilos.checkbox}
+              onClick={(e) => e.stopPropagation()} // evita doble toggle
             />
             Mostrar contraseña
           </div>

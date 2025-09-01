@@ -9,15 +9,17 @@ export default function AdminLogin() {
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
-  // Credenciales locales (puedes cambiarlas si quieres)
+  // ✅ Credenciales exactas
   const ADMIN_USER = "DD-ADM";
-  const ADMIN_PASS = "Digit@l25";
+  const ADMIN_PASS = "Digit@l-25";        // ← corregido (con guion)
+  const GERENTE_USER = "DD-GERENTE";
+  const GERENTE_PASS = "NicoGerent3-25";
 
-  // Assets desde /public (válidos en localhost y dominio)
+  // Assets desde /public
   const bgUrl = useMemo(() => `${process.env.PUBLIC_URL}/fondo-login.gif`, []);
   const logoUrl = useMemo(() => `${process.env.PUBLIC_URL}/logo.jpg`, []);
 
-  // Estilos unificados (negro/café/dorado), mobile-first
+  // Estilos
   const estilos = {
     fondo: {
       minHeight: "100vh",
@@ -94,6 +96,7 @@ export default function AdminLogin() {
       color: "#d4af7f",
       fontSize: ".95rem",
       userSelect: "none",
+      cursor: "pointer",
     },
     checkbox: { width: 18, height: 18, cursor: "pointer" },
     error: {
@@ -137,7 +140,6 @@ export default function AdminLogin() {
       marginTop: 12,
       boxShadow: "0 0 8px #000",
     },
-    nota: { marginTop: 10, fontSize: ".85rem", color: "#cfcfcf", textAlign: "center" },
   };
 
   const handleLogin = (e) => {
@@ -145,7 +147,7 @@ export default function AdminLogin() {
     if (cargando) return;
 
     const u = usuario.trim();
-    const p = clave.trim();
+    const p = clave; // la clave puede llevar símbolos, no aplicar trim por seguridad
 
     if (!u || !p) {
       setError("❌ Completa usuario y contraseña.");
@@ -156,16 +158,30 @@ export default function AdminLogin() {
     setError("");
 
     setTimeout(() => {
+      // Admin
       if (u === ADMIN_USER && p === ADMIN_PASS) {
-        localStorage.setItem("adminLogged", "true");
-        // (opcional) limpiar otros roles:
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("role", "admin");
+        localStorage.setItem("adminLogged", "true"); // compat
         localStorage.removeItem("gerenteLogged");
         navigate("/admin-panel", { replace: true });
-      } else {
-        setError("❌ Usuario o clave incorrecta.");
+        setCargando(false);
+        return;
       }
+      // Gerente
+      if (u === GERENTE_USER && p === GERENTE_PASS) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("role", "gerente");
+        localStorage.setItem("gerenteLogged", "true"); // compat
+        localStorage.removeItem("adminLogged");
+        navigate("/gerente-panel", { replace: true });
+        setCargando(false);
+        return;
+      }
+
+      setError("❌ Usuario o clave incorrecta.");
       setCargando(false);
-    }, 250); // micro-delay para UX
+    }, 250);
   };
 
   return (
@@ -220,6 +236,7 @@ export default function AdminLogin() {
               checked={mostrarClave}
               onChange={() => setMostrarClave((v) => !v)}
               style={estilos.checkbox}
+              onClick={(e) => e.stopPropagation()}
             />
             Mostrar contraseña
           </div>
@@ -239,7 +256,6 @@ export default function AdminLogin() {
         >
           ⬅️ Volver al Inicio
         </button>
-
       </div>
     </div>
   );

@@ -17,9 +17,6 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-// 🔒 Solo verifica sesión; NO inicia anónimo
-import { ensureAuth } from "../utils/ensureAuth";
-
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -51,9 +48,6 @@ export default function AdminPanel() {
   // 🔑 db cargado en diferido
   const [dbRef, setDbRef] = useState(null);
 
-  // Guarda el user para no llamar ensureAuth muchas veces
-  const [user, setUser] = useState(null);
-
   // ====== UI / TABS ======
   const TABS = ["Pendientes", "Confirmadas", "Subir Proyecto", "Proyectos"];
   const [tab, setTab] = useState("Pendientes");
@@ -76,9 +70,9 @@ export default function AdminPanel() {
   const [editId, setEditId] = useState(null);
   const posiblesResponsables = ["Nicolás", "Eliana", "Sebastián"];
 
-  // ====== AUTH & SNAPSHOTS ======
+  // ====== INIT & SNAPSHOTS ======
   useEffect(() => {
-    // (opcional) tu flag local para proteger ruta por UI
+    // Protección simple por tu clave local (sin Firebase Auth)
     const logged = localStorage.getItem("adminLogged");
     if (logged !== "true") {
       navigate("/admin-login");
@@ -91,15 +85,7 @@ export default function AdminPanel() {
 
     (async () => {
       try {
-        // 👇 Verifica sesión real en Firebase (NO inicia anónimo)
-        const current = await ensureAuth();
-        if (!current) {
-          navigate("/admin-login");
-          return;
-        }
-        setUser(current);
-
-        // 👉 carga db después de autenticar
+        // 👉 carga db después de montar
         const { db } = await import("../firebase");
         setDbRef(db);
 
@@ -134,17 +120,8 @@ export default function AdminPanel() {
   }, [navigate]);
 
   // ====== HELPERS ======
-  const requireAuth = () => {
-    if (!user) {
-      toast.warn("Necesitas iniciar sesión.");
-      navigate("/admin-login");
-      return false;
-    }
-    return true;
-  };
-
   const guardarEnHistorial = async (reserva, estado) => {
-    if (!dbRef || !requireAuth()) return;
+    if (!dbRef) return;
     await addDoc(collection(dbRef, "reservasHistorial"), {
       ...reserva,
       estado,
@@ -181,7 +158,7 @@ export default function AdminPanel() {
   };
 
   const confirmarReserva = async (reserva) => {
-    if (!dbRef || !requireAuth()) return;
+    if (!dbRef) return;
     const r = { ...reserva, estado: "confirmada", fechaConfirmacion: new Date().toISOString() };
     try {
       await addDoc(collection(dbRef, "reservasConfirmadas"), r);
@@ -223,7 +200,7 @@ export default function AdminPanel() {
   };
 
   const eliminarReservaPendiente = async (id) => {
-    if (!dbRef || !requireAuth()) return;
+    if (!dbRef) return;
     const r = reservas.find((x) => x.id === id);
     if (!window.confirm("¿Eliminar esta reserva pendiente?")) return;
     try {
@@ -236,7 +213,7 @@ export default function AdminPanel() {
   };
 
   const eliminarReservaConfirmada = async (id) => {
-    if (!dbRef || !requireAuth()) return;
+    if (!dbRef) return;
     if (!window.confirm("¿Eliminar esta reserva confirmada?")) return;
     try {
       await deleteDoc(doc(dbRef, "reservasConfirmadas", id));
@@ -281,7 +258,7 @@ export default function AdminPanel() {
 
   const guardarProyecto = async (e) => {
     e.preventDefault();
-    if (!dbRef || !requireAuth()) return;
+    if (!dbRef) return;
     const f = formularioProyecto;
 
     if (!clienteTieneReservaConfirmada(f.cliente)) {
@@ -337,7 +314,7 @@ export default function AdminPanel() {
   };
 
   const eliminarProyecto = async (id) => {
-    if (!dbRef || !requireAuth()) return;
+    if (!dbRef) return;
     if (!window.confirm("¿Eliminar este proyecto?")) return;
     try {
       await deleteDoc(doc(dbRef, "proyectos", id));
@@ -669,7 +646,7 @@ export default function AdminPanel() {
                 <div key={`proy-${p.id}-${i}`} className="tarjeta fila-proyecto">
                   <div className="proy-info">
                     <div className="proy-titulo">
-                      <strong>{p.nombreProyecto || "(Proyecto sin nombre)"}</strong>
+                      <strong>{p.nombreProyecto || "(Proyecto sin nombre)"} </strong>
                       <span className="chip">{p.cliente}</span>
                     </div>
                     <div className="proy-detalles">
